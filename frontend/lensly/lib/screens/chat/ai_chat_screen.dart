@@ -15,7 +15,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
   final List<Map<String, dynamic>> _messages = [
     {
       'role': 'ai',
-      'text': 'Bună! sunt asistentul tău foto. Descrie-mi stilul de poze pe care îl cauți și îți găsesc dotografii potriviți.',
+      'text': 'Bună! sunt asistentul tău foto. Descrie-mi stilul de poze pe care îl cauți și îți găsesc fotografii potriviți.',
       'time': '10:20',
     },
   ];
@@ -29,7 +29,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
     super.dispose();
   }
 
-  void _scrolltoBottom() {
+  void _scrollToBottom() {
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -57,7 +57,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
       _suggestedPhotographers.clear();
     });
 
-    _scrolltoBottom();
+    _scrollToBottom();
 
     Future.delayed(const Duration(seconds: 2), () {
       setState(() {
@@ -355,21 +355,22 @@ class _AiChatScreenState extends State<AiChatScreen> {
   }
 
 Widget _buildSuggestedPhotographers() {
-  return Container(
-    height: 90,
-    padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+  return SizedBox(
+    height: 88,
     child: ListView.builder(
       scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
       itemCount: _suggestedPhotographers.length,
       itemBuilder: (context, index) {
         final photographer = _suggestedPhotographers[index];
         return Container(
-          width: 70,
+          width: 65,
           margin: const EdgeInsets.only(right: 8),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               CircleAvatar(
-                radius: 26,
+                radius: 22,
                 backgroundColor: Color(photographer['color']),
                 child: Text(
                   photographer['name']
@@ -377,27 +378,29 @@ Widget _buildSuggestedPhotographers() {
                       .substring(0, 2)
                       .toUpperCase(),
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     color: Colors.white,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
               Text(
                 photographer['name'].toString().split(' ')[0],
                 style: const TextStyle(
-                  fontSize: 10,
+                  fontSize: 9,
                   color: Color(0xFF3D3530),
                 ),
                 overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
               Text(
                 photographer['city'],
                 style: const TextStyle(
-                  fontSize: 9,
+                  fontSize: 8,
                   color: Color(0xFFC4B9A8),
                 ),
+                maxLines: 1,
               ),
             ],
           ),
