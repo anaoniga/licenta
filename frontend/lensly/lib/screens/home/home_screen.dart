@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lensly/screens/profile/profile_screen.dart';
 import 'package:lensly/screens/saved/saved_screen.dart';
 import 'package:lensly/screens/profile/photographer_profile_screen.dart';
+import 'package:lensly/screens/chat/ai_chat_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -592,6 +593,11 @@ Widget _buildBottomNav() {
                     context,
                     MaterialPageRoute(builder: (_) => SavedScreen()),
                   );
+                } else if (index == 2) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AiChatScreen()),
+                  );                
                 } else {
                   setState(() => _currentIndex = index);
                 }
