@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lensly/screens/photographer/photographer_dashboard_screen.dart';
-import 'screens/home/home_screen.dart';
-import 'screens/photographer/photographer_dashboard_screen.dart';
-
+import 'screens/auth/login_screen.dart';
 void main() {
   runApp(const LenslyApp());
 }
@@ -21,7 +18,7 @@ class LenslyApp extends StatelessWidget {
           seedColor: const Color(0xFF3D3530),
         ),
       ),
-      home: const PhotographerDashboardScreen(),
+      home: const LoginScreen(),
             );
     
   }

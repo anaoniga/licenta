@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:lensly/screens/photographer/my_photos_screen.dart';
+import 'package:lensly/screens/photographer/photographer_dashboard_screen.dart';
 import 'package:lensly/screens/profile/profile_screen.dart';
 import 'package:lensly/screens/saved/saved_screen.dart';
 import 'package:lensly/screens/profile/photographer_profile_screen.dart';
@@ -7,7 +9,12 @@ import 'package:lensly/screens/chat/messages_screen.dart';
 
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final bool isPhotographer;  // ← adaugă asta
+
+  const HomeScreen({
+    super.key,
+    this.isPhotographer = false,  // ← default false
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -271,6 +278,9 @@ Widget _buildPinterestWall() {
 }
 
 Widget _buildPhotoCard(Map<String, dynamic> photo) {
+  final isOwn = widget.isPhotographer &&
+      photo['photographer'] == 'Ana Ionescu'; // vom folosi userul real mai tarziu
+
   return GestureDetector(
     onTap: () => _showPhotoDetail(photo),
     child: Container(
@@ -279,7 +289,34 @@ Widget _buildPhotoCard(Map<String, dynamic> photo) {
       decoration: BoxDecoration(
         color: Color(photo['color']),
         borderRadius: BorderRadius.circular(10),
+        border: isOwn
+            ? Border.all(color: const Color(0xFFC9A96E), width: 1.5)
+            : null,
       ),
+      child: isOwn
+          ? Align(
+              alignment: Alignment.topLeft,
+              child: Container(
+                margin: const EdgeInsets.all(6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFC9A96E).withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'A ta',
+                  style: TextStyle(
+                    fontSize: 8,
+                    color: Color(0xFF1C1917),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            )
+          : null,
     ),
   );
 }
@@ -558,13 +595,20 @@ Widget _buildTag(String text) {
 }
 
 Widget _buildBottomNav() {
-  final items = [
-    {'icon': Icons.home_outlined, 'label': 'Acasă'},
-    {'icon': Icons.bookmark_border, 'label': 'Salvate'},
-    {'icon': Icons.auto_awesome_outlined, 'label': 'AI Chat'},
-    {'icon': Icons.chat_bubble_outline, 'label': 'Mesaje'},
-    {'icon': Icons.person_outline, 'label': 'Profil'},
-  ];
+  final items = widget.isPhotographer
+    ? [
+        {'icon': Icons.home_outlined, 'label': 'Acasă'},
+        {'icon': Icons.photo_library_outlined, 'label': 'Fotografii'},
+        {'icon': Icons.chat_bubble_outline, 'label': 'Mesaje'},
+        {'icon': Icons.person_outline, 'label': 'Profil'},
+      ]
+    : [
+        {'icon': Icons.home_outlined, 'label': 'Acasă'},
+        {'icon': Icons.bookmark_border, 'label': 'Salvate'},
+        {'icon': Icons.auto_awesome_outlined, 'label': 'AI Chat'},
+        {'icon': Icons.chat_bubble_outline, 'label': 'Mesaje'},
+        {'icon': Icons.person_outline, 'label': 'Profil'},
+      ];
 
   return Container(
     decoration: const BoxDecoration(
@@ -585,6 +629,26 @@ Widget _buildBottomNav() {
             final isActive = index == _currentIndex;
             return GestureDetector(
               onTap: () {
+                if (widget.isPhotographer) {
+                  if (index == 1) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MyPhotosScreen(),
+                      ));
+                  } else if (index == 2) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MessagesScreen(),
+                      ));
+                  } else if (index == 3) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const PhotographerDashboardScreen(),
+                      ));
+                  } else {
+                    setState(() => _currentIndex = index);
+                  }    
+                } else {
                 if (index == 4) {
                   Navigator.push(
                     context,
@@ -608,6 +672,7 @@ Widget _buildBottomNav() {
                 } else {
                   setState(() => _currentIndex = index);
                 }
+              }
               },
 
               child: Column(

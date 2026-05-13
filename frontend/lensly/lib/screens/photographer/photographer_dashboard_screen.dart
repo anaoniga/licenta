@@ -82,7 +82,6 @@ class _PhotographerDashboardScreenState
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -422,85 +421,6 @@ class _PhotographerDashboardScreenState
           ),
         );
       }).toList(),
-    );
-  }
-
-  Widget _buildBottomNav() {
-    final items = [
-      {'icon': Icons.home_outlined, 'label': 'Acasă'},
-      {'icon': Icons.photo_library_outlined, 'label': 'Fotografii'},
-      {'icon': Icons.chat_bubble_outline, 'label': 'Mesaje'},
-      {'icon': Icons.person_outline, 'label': 'Profil'},
-    ];
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFFFAF8F5),
-        border: Border(
-          top: BorderSide(color: Color(0xFFE8E3DA), width: 0.5),
-        ),
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(items.length, (index) {
-              final isActive = index == _currentIndex;
-              return GestureDetector(
-                onTap: () {
-                  if (index == 1) {
-                    Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => const MyPhotosScreen(),
-                    ));
-                  } else if (index == 2) {
-                    Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => const MessagesScreen(),
-                    ));
-                  } else {
-                    setState(() => _currentIndex = index);
-                  }
-                },
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      items[index]['icon'] as IconData,
-                      size: 22,
-                      color: isActive
-                          ? const Color(0xFF3D3530)
-                          : const Color(0xFFC4B9A8),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      items[index]['label'] as String,
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: isActive
-                            ? const Color(0xFF3D3530)
-                            : const Color(0xFFC4B9A8),
-                        fontWeight: isActive
-                            ? FontWeight.w500
-                            : FontWeight.w300,
-                      ),
-                    ),
-                    if (isActive)
-                      Container(
-                        margin: const EdgeInsets.only(top: 3),
-                        width: 4,
-                        height: 4,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF3D3530),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                  ],
-                ),
-              );
-            }),
-          ),
-        ),
-      ),
     );
   }
 }
