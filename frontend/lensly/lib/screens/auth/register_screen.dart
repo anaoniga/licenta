@@ -1,6 +1,8 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import '../../services/auth_service.dart';
+import '../home/home_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -289,10 +291,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _isPasswordValid
-                      ? () {
+                      ? () async {
+                          final result = await AuthService.register(
+                            name: _nameController.text.trim(),
+                            email: _emailController.text.trim(),
+                            password: _passwordController.text,
+                            role: _isPhotographer ? 'photographer' : 'client',
+                          );
 
-                      }
-                    : null,
+                          if (result['success']) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Cont creat! Intră în cont.'),
+                                backgroundColor: Color(0xFF1D9E75),
+                              ),
+                            );
+                            Navigator.pop(context);
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(result['error'] ?? 'Eroare la înregistrare'),
+                                backgroundColor: const Color(0xFFE24B4A),
+                              ),
+                            );
+                          }
+                        }
+                      : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFC9A96E),
                     disabledBackgroundColor: const Color(0xFF3D3530),

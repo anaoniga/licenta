@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'register_screen.dart';
+import '../../services/auth_service.dart';
+import '../home/home_screen.dart';
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -147,8 +150,34 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
+                    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+                      return;
+                    }
 
+                    final result = await AuthService.login(
+                      email: _emailController.text.trim(),
+                      password: _passwordController.text,
+                    );
+
+                    if (result['success']) {
+                      final user = result['user'];
+                      final isPhotographer = user['role'] == 'photographer';
+
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => HomeScreen(isPhotographer: isPhotographer),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(result['error'] ?? 'Eroare la login'),
+                          backgroundColor: const Color(0xFFE24B4A),
+                        ),
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFC9A96E),

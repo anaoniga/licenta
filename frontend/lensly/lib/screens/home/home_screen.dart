@@ -6,7 +6,7 @@ import 'package:lensly/screens/saved/saved_screen.dart';
 import 'package:lensly/screens/profile/photographer_profile_screen.dart';
 import 'package:lensly/screens/chat/ai_chat_screen.dart';
 import 'package:lensly/screens/chat/messages_screen.dart';
-
+import 'package:lensly/services/photo_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool isPhotographer;  // ← adaugă asta
@@ -23,16 +23,27 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  final List<Map<String, dynamic>> _photos = [
-    {'id': 1, 'photographer': 'Ana Ionescu', 'style': 'Dreamy', 'city': 'Cluj', 'color': 0xFFB0A090, 'height': 220.0},
-    {'id': 2, 'photographer': 'Mihai Popa', 'style': 'Wedding', 'city': 'București', 'color': 0xFFC4B4A4, 'height': 180.0},
-    {'id': 3, 'photographer': 'Laura M.', 'style': 'Couple', 'city': 'Cluj', 'color': 0xFF9C8C7C, 'height': 200.0},
-    {'id': 4, 'photographer': 'Radu C.', 'style': 'Editorial', 'city': 'Iași', 'color': 0xFFD4C4B4, 'height': 160.0},
-    {'id': 5, 'photographer': 'Mara D.', 'style': 'Dreamy', 'city': 'Cluj', 'color': 0xFFA89888, 'height': 240.0},
-    {'id': 6, 'photographer': 'Ion C.', 'style': 'Pregnancy', 'city': 'Sibiu', 'color': 0xFFBCA898, 'height': 190.0},
-    {'id': 7, 'photographer': 'Sofia T.', 'style': 'Solo', 'city': 'București', 'color': 0xFF8C7C6C, 'height': 170.0},
-    {'id': 8, 'photographer': 'Elena P.', 'style': 'Wedding', 'city': 'Cluj', 'color': 0xFFC8B4A0, 'height': 210.0},
-  ];
+  List<Map<String, dynamic>> _photos = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPhotos();
+  }
+
+  Future<void> _loadPhotos() async {
+  setState(() => _isLoading = true);
+  try {
+    final photos = await PhotoService.getPhotos();
+    setState(() {
+      _photos = photos;
+      _isLoading = false;
+    });
+  } catch (e) {
+    setState(() => _isLoading = false);
+  }
+}
 
   final List<String> _filters = [
     'Toate', 'Dreamy', 'Wedding', 'Couple', 'Pregnancy', 'Portrait', 'Editorial', 'Cinematic'
@@ -42,22 +53,22 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   List<Map<String, dynamic>> get _filteredPhotos {
-    return _photos.where((photo) {
-      final matchesFilter = _selectedFilter == 'Toate' ||
-          photo['style'] == _selectedFilter;
-      final matchesSearch = _searchController.text.isEmpty ||
-          photo['photographer']
-              .toLowerCase()
-              .contains(_searchController.text.toLowerCase()) ||
-          photo['style']
-              .toLowerCase()
-              .contains(_searchController.text.toLowerCase()) ||
-          photo['city']
-              .toLowerCase()
-              .contains(_searchController.text.toLowerCase());
-      return matchesFilter && matchesSearch;
-    }).toList();
-  }
+  return _photos.where((photo) {
+    final matchesFilter = _selectedFilter == 'Toate' ||
+        photo['category'] == _selectedFilter;
+    final matchesSearch = _searchController.text.isEmpty ||
+        (photo['photographer_name'] ?? '')
+            .toLowerCase()
+            .contains(_searchController.text.toLowerCase()) ||
+        (photo['category'] ?? '')
+            .toLowerCase()
+            .contains(_searchController.text.toLowerCase()) ||
+        (photo['photographer_city'] ?? '')
+            .toLowerCase()
+            .contains(_searchController.text.toLowerCase());
+    return matchesFilter && matchesSearch;
+  }).toList();
+}
 
   @override
   void dispose() {
@@ -222,6 +233,14 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 Widget _buildPinterestWall() {
+  if (_isLoading) {
+    return const Center(
+      child: CircularProgressIndicator(
+        color: Color(0xFF8C7B6B),
+      ),
+    );
+  }
+
   final photos = _filteredPhotos;
 
   if (photos.isEmpty) {
@@ -252,7 +271,6 @@ Widget _buildPinterestWall() {
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-
         Expanded(
           child: Column(
             children: leftColumn
@@ -261,10 +279,9 @@ Widget _buildPinterestWall() {
           ),
         ),
         const SizedBox(width: 6),
-
         Expanded(
           child: Padding(
-            padding: const EdgeInsetsGeometry.only(top: 24),
+            padding: const EdgeInsets.only(top: 24),
             child: Column(
               children: rightColumn
                   .map((photo) => _buildPhotoCard(photo))
@@ -279,44 +296,39 @@ Widget _buildPinterestWall() {
 
 Widget _buildPhotoCard(Map<String, dynamic> photo) {
   final isOwn = widget.isPhotographer &&
-      photo['photographer'] == 'Ana Ionescu'; // vom folosi userul real mai tarziu
+      photo['photographer_name'] == 'Ana Ionescu';
+
+  // calculam inaltimea random bazata pe id
+  final height = photo['id'] != null
+      ? 150.0 + (photo['id'] % 5) * 30.0
+      : 180.0;
 
   return GestureDetector(
     onTap: () => _showPhotoDetail(photo),
     child: Container(
       margin: const EdgeInsets.only(bottom: 6),
-      height: photo['height'],
+      height: height,
       decoration: BoxDecoration(
-        color: Color(photo['color']),
+        color: const Color(0xFFC4B9A8),
         borderRadius: BorderRadius.circular(10),
         border: isOwn
             ? Border.all(color: const Color(0xFFC9A96E), width: 1.5)
             : null,
       ),
-      child: isOwn
-          ? Align(
-              alignment: Alignment.topLeft,
-              child: Container(
-                margin: const EdgeInsets.all(6),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 2,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: photo['image_url'] != null
+            ? Image.network(
+                photo['image_url'],
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  color: const Color(0xFFC4B9A8),
                 ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFC9A96E).withValues(alpha: 0.9),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text(
-                  'A ta',
-                  style: TextStyle(
-                    fontSize: 8,
-                    color: Color(0xFF1C1917),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            )
-          : null,
+              )
+            : Container(color: const Color(0xFFC4B9A8)),
+      ),
     ),
   );
 }
@@ -342,7 +354,7 @@ Widget _buildPhotoDetailSheet(Map<String, dynamic> photo) {
           child: Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              color: Color(photo['color']),
+              color: const Color(0xFF9C8C7C),
             ),
             child: Stack(
               children: [
@@ -413,7 +425,7 @@ Widget _buildPhotoDetailSheet(Map<String, dynamic> photo) {
                 ),
               ),
               Text(
-                'Sesiune ${photo['style']}',
+                'Sesiune ${photo['category'] ?? photo['style'] ?? ''}',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w300,
@@ -423,7 +435,7 @@ Widget _buildPhotoDetailSheet(Map<String, dynamic> photo) {
               ),
               const SizedBox(height: 4),
               Text(
-                '${photo['style']} · outdoor · natural light · ${photo['city']}',
+                '${photo['category'] ?? ''} · outdoor · natural light · ${photo['photographer_city'] ?? ''}',
                 style: const TextStyle(
                   fontSize: 11,
                   color: Color(0xFF8C7B6B),
@@ -434,8 +446,8 @@ Widget _buildPhotoDetailSheet(Map<String, dynamic> photo) {
               Wrap(
                 spacing: 6,
                 children: [
-                  _buildTag(photo['style']),
-                  _buildTag(photo['city']),
+                  _buildTag(photo['category'] ?? ''),
+                  _buildTag(photo['photographer_city'] ?? ''),
                   _buildTag('Natural light'),
                 ],
               ),
@@ -461,12 +473,9 @@ Widget _buildPhotoDetailSheet(Map<String, dynamic> photo) {
                 children: [
                   CircleAvatar(
                     radius: 20,
-                    backgroundColor: Color(photo['color']),
+                    backgroundColor: const Color(0xFF9C8C7C),
                     child: Text(
-                      photo['photographer']
-                          .toString()
-                          .substring(0, 2)
-                          .toUpperCase(),
+                      (photo['photographer_name'] ?? 'NA').toString().substring(0, 2).toUpperCase(),
                       style: const TextStyle(
                         fontSize: 11,
                         color: Colors.white,
@@ -480,7 +489,7 @@ Widget _buildPhotoDetailSheet(Map<String, dynamic> photo) {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          photo['photographer'],
+                          photo['photographer_name'] ?? '',
                           style: const TextStyle(
                             fontSize: 13,
                             color: Color(0xFF3D3530),
@@ -488,7 +497,7 @@ Widget _buildPhotoDetailSheet(Map<String, dynamic> photo) {
                           ),
                         ),
                         Text(
-                          '${photo['city']} · ${photo['style']} · ★ 4.9',
+                          '${photo['photographer_city'] ?? ''} · ${photo['category'] ?? ''} · ★ 4.9',
                           style: const TextStyle(
                             fontSize: 10,
                             color: Color(0xFF8C7B6B),
