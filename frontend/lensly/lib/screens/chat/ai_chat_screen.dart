@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class AiChatScreen extends StatefulWidget {
   const AiChatScreen({super.key});
@@ -41,70 +43,71 @@ class _AiChatScreenState extends State<AiChatScreen> {
     });
   }
 
-  void _sendMessage() {
-    if (_messageController.text.trim().isEmpty) return;
+  void _sendMessage() async {
+  if (_messageController.text.trim().isEmpty) return;
 
-    final userMessage = _messageController.text.trim();
-    _messageController.clear();
+  final userMessage = _messageController.text.trim();
+  _messageController.clear();
 
-    setState(() {
-      _messages.add({
-        'role': 'user',
-        'text': userMessage,
-        'time': _getCurrentTime(),
-      });
-      _isLoading = true;
-      _suggestedPhotographers.clear();
+  setState(() {
+    _messages.add({
+      'role': 'user',
+      'text': userMessage,
+      'time': _getCurrentTime(),
     });
+    _isLoading = true;
+    _suggestedPhotographers.clear();
+  });
 
-    _scrollToBottom();
+  _scrollToBottom();
 
-    Future.delayed(const Duration(seconds: 2), () {
+  try {
+    final response = await http.post(
+      Uri.parse('http://10.0.2.2:3000/api/ai/chat'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'message': userMessage}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
       setState(() {
         _isLoading = false;
         _messages.add({
           'role': 'ai',
-          'text': _generateMockResponse(userMessage),
+          'text': data['message'],
           'time': _getCurrentTime(),
         });
 
-        if (_containsPhotoKeywords(userMessage)) {
-          _suggestedPhotographers.addAll([
-            {'name': 'Ana Ionescu', 'style': 'Dreamy', 'city': 'Cluj', 'color': 0xFFB0A090},
-            {'name': 'Mara Dumitru', 'style': 'Dreamy', 'city': 'Cluj', 'color': 0xFFC4B4A4},
-            {'name': 'Ion Cristea', 'style': 'Dreamy', 'city': 'Sibiu', 'color': 0xFF9C8C7C},
-          ]);
+        if (data['photographers'] != null) {
+          _suggestedPhotographers.addAll(
+            List<Map<String, dynamic>>.from(data['photographers']),
+          );
         }
       });
-      _scrollToBottom();
+    } else {
+      setState(() {
+        _isLoading = false;
+        _messages.add({
+          'role': 'ai',
+          'text': 'Îmi pare rău, am întâmpinat o eroare. Încearcă din nou.',
+          'time': _getCurrentTime(),
+        });
+      });
+    }
+  } catch (e) {
+    setState(() {
+      _isLoading = false;
+      _messages.add({
+        'role': 'ai',
+        'text': 'Nu mă pot conecta la server. Verifică conexiunea.',
+        'time': _getCurrentTime(),
+      });
     });
   }
 
-  bool _containsPhotoKeywords(String message) {
-    final keywords = [
-      'dreamy', 'wedding', 'nuntă', 'couple', 'cupluri',
-      'portrait', 'portret', 'cinematic', 'editorial',
-      'fotograf', 'poze', 'sesiune', 'shoot', 'stil'
-    ];
-    final lower = message.toLowerCase();
-    return keywords.any((keyword) => lower.contains(keyword));
-  }
+  _scrollToBottom();
+}
 
-  String _generateMockResponse(String message) {
-    final lower = message.toLowerCase();
-
-    if (lower.contains('dreamy')) {
-      return 'Stilul dreamy e caracterizat prin lumini moi, tonuri pastelate și o atmosferă romantică. Am găsit 3 fotografi din zona ta care lucrează excelent în acest stil ✦';
-    } else if (lower.contains('wedding') || lower.contains('nuntă')) {
-      return 'Pentru nunți recomand fotografi cu experiență în evenimente de lungă durată. Iată câțiva specialiști în wedding photography ✦';
-    } else if (lower.contains('couple') || lower.contains('cuplu')) {
-      return 'Sesiunile couple sunt perfecte pentru a surprinde momente naturale. Îți recomand fotografi specializați în outdoor couple shoots ✦';
-    } else if (lower.contains('preț') || lower.contains('cost') || lower.contains('buget')) {
-      return 'Prețurile variază în funcție de fotograf și tipul sesiunii. De obicei o sesiune foto durează 2-3 ore și include editarea pozelor. Poți contacta direct fotografii pentru oferte personalizate.';
-    } else {
-      return 'Interesant! Poți să îmi spui mai multe despre stilul pe care îl cauți? De exemplu: dreamy, cinematic, editorial, wedding sau couple?';
-    }
-  }
 
   String _getCurrentTime() {
     final now = DateTime.now();

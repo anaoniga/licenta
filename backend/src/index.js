@@ -13,6 +13,9 @@ app.use('/api/auth', authRoutes);
 const photosRoutes = require('./routes/photos');
 app.use('/api/photos', photosRoutes);
 
+const aiRoutes = require('./routes/ai');
+app.use('/api/ai', aiRoutes);
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server pornit pe portul ${PORT}`);

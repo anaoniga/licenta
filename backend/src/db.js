@@ -17,4 +17,7 @@ pool.connect((err, client, release) => {
   }
 });
 
+const GEMINI_API_KEY = 'AIzaSyBALBOT0kW4J_4oGrOoujiswQ3c5v0V0F8';
+
 module.exports = pool;
+module.exports.GEMINI_API_KEY = GEMINI_API_KEY;
