@@ -102,4 +102,9 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user', jsonEncode(user));
   }
+
+  static Future<void> saveUserData(Map<String, dynamic> user) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('user', jsonEncode(user));
+}
 }

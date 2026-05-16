@@ -7,13 +7,14 @@ import 'package:lensly/screens/profile/photographer_profile_screen.dart';
 import 'package:lensly/screens/chat/ai_chat_screen.dart';
 import 'package:lensly/screens/chat/messages_screen.dart';
 import 'package:lensly/services/photo_service.dart';
+import 'package:lensly/services/message_service.dart';
+import 'package:lensly/services/auth_service.dart';
 
 class HomeScreen extends StatefulWidget {
-  final bool isPhotographer;  // ← adaugă asta
-
+  final bool isPhotographer;  
   const HomeScreen({
     super.key,
-    this.isPhotographer = false,  // ← default false
+    this.isPhotographer = false,  
   });
 
   @override
@@ -353,11 +354,20 @@ Widget _buildPhotoDetailSheet(Map<String, dynamic> photo) {
         Expanded(
           child: Container(
             width: double.infinity,
-            decoration: BoxDecoration(
-              color: const Color(0xFF9C8C7C),
+            decoration: const BoxDecoration(
+              color: Color(0xFF9C8C7C),
             ),
             child: Stack(
+              fit: StackFit.expand,
               children: [
+                if (photo['image_url'] != null)
+                  Image.network(
+                    photo['image_url'],
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: const Color(0xFF9C8C7C),
+                    ),
+                  ),
                 Positioned(
                   top: 16,
                   left: 16,
@@ -378,7 +388,6 @@ Widget _buildPhotoDetailSheet(Map<String, dynamic> photo) {
                     ),
                   ),
                 ),
-
                 Positioned(
                   top: 16,
                   right: 16,
@@ -400,15 +409,10 @@ Widget _buildPhotoDetailSheet(Map<String, dynamic> photo) {
             ),
           ),
         ),
-
         Container(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           decoration: const BoxDecoration(
             color: Color(0xFFFAF8F5),
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(0),
-              bottomRight: Radius.circular(0),
-            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -425,7 +429,7 @@ Widget _buildPhotoDetailSheet(Map<String, dynamic> photo) {
                 ),
               ),
               Text(
-                'Sesiune ${photo['category'] ?? photo['style'] ?? ''}',
+                'Sesiune ${photo['category'] ?? ''}',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w300,
@@ -455,7 +459,6 @@ Widget _buildPhotoDetailSheet(Map<String, dynamic> photo) {
                 color: Color(0xFFE8E3DA),
                 height: 24,
               ),
-
               GestureDetector(
                 onTap: () {
                   Navigator.pop(context);
@@ -468,59 +471,86 @@ Widget _buildPhotoDetailSheet(Map<String, dynamic> photo) {
                     ),
                   );
                 },
-
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: const Color(0xFF9C8C7C),
-                    child: Text(
-                      (photo['photographer_name'] ?? 'NA').toString().substring(0, 2).toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: const Color(0xFF9C8C7C),
+                      child: Text(
+                        (photo['photographer_name'] ?? 'NA')
+                            .toString()
+                            .substring(0, 2)
+                            .toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          photo['photographer_name'] ?? '',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF3D3530),
-                            fontWeight: FontWeight.w400,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            photo['photographer_name'] ?? '',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF3D3530),
+                              fontWeight: FontWeight.w400,
+                            ),
                           ),
-                        ),
-                        Text(
-                          '${photo['photographer_city'] ?? ''} · ${photo['category'] ?? ''} · ★ 4.9',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Color(0xFF8C7B6B),
+                          Text(
+                            '${photo['photographer_city'] ?? ''} · ${photo['category'] ?? ''} · ★ 4.9',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Color(0xFF8C7B6B),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const Icon(
-                    Icons.arrow_forward_ios,
-                    size: 14,
-                    color: Color(0xFFC4B9A8),
-                  ),
-                ],
-              ),
+                    const Icon(
+                      Icons.arrow_forward_ios,
+                      size: 14,
+                      color: Color(0xFFC4B9A8),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 14),
-
               Row(
                 children: [
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () async {
+                        final currentUser = await AuthService.getUser();
+                        if (currentUser == null) return;
+
+                        final photographerId = photo['photographer_id'];
+                        if (photographerId == null) return;
+
+                        final conversation =
+                            await MessageService.createConversation(
+                          clientId: currentUser['id'],
+                          photographerId: photographerId,
+                        );
+
+                        if (conversation != null) {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ConversationScreen(
+                                conversation: conversation,
+                                currentUser: currentUser,
+                                otherName: photo['photographer_name'] ?? '',
+                              ),
+                            ),
+                          );
+                        }
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF3D3530),
                         foregroundColor: const Color(0xFFF5F2EC),
@@ -532,34 +562,37 @@ Widget _buildPhotoDetailSheet(Map<String, dynamic> photo) {
                       ),
                       child: const Text(
                         'Scrie-i',
-                        style: TextStyle(
-                          fontSize: 12,
-                          letterSpacing: 1,
-                        ),
+                        style: TextStyle(fontSize: 12, letterSpacing: 1),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PhotographerProfileScreen(
+                              photographer: photo,
+                              initialTab: 1,
+                            ),
+                          ),
+                        );
+                      },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: const Color(0xFF8C7B6B),
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        side: const BorderSide(
-                          color: Color(0xFFE8E3DA),
-                        ),
+                        side: const BorderSide(color: Color(0xFFE8E3DA)),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                       child: const Text(
                         'Disponibilitate',
-                        style: TextStyle(
-                          fontSize: 12,
-                          letterSpacing: 0.5,
-                        ),
-                      ),                     
+                        style: TextStyle(fontSize: 12, letterSpacing: 0.5),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),

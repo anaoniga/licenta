@@ -29,8 +29,14 @@ app.use('/api/ai', aiRoutes);
 const calendarRoutes = require('./routes/calendar');
 app.use('/api/calendar', calendarRoutes);
 
+const uploadRoutes = require('./routes/upload');
+app.use('/api/upload', uploadRoutes);
+
 const messagesRoutes = require('./routes/messages');
 app.use('/api/messages', messagesRoutes);
+
+const usersRoutes = require('./routes/users');
+app.use('/api/users', usersRoutes);
 
 io.on('connection', (socket) => {
   console.log('User conectat:', socket.id);

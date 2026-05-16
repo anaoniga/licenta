@@ -3,6 +3,7 @@ import 'package:lensly/services/auth_service.dart';
 import 'my_photos_screen.dart';
 import 'calendar_edit_screen.dart';
 import 'package:lensly/screens/auth/login_screen.dart';
+import 'package:lensly/screens/photographer/edit_profile_screen.dart';
 
 class PhotographerDashboardScreen extends StatefulWidget {
   const PhotographerDashboardScreen({super.key});
@@ -154,24 +155,36 @@ class _PhotographerDashboardScreenState
               ),
               Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: const Color(0xFF3D3530),
-                        width: 0.5,
+                  GestureDetector(
+                    onTap: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const EditProfileScreen(),
+                        ),
+                      );
+                      // reincarcam datele dupa ce ne intoarcem
+                      await _loadUser();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
                       ),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text(
-                      'Editează',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Color(0xFFC4B9A8),
-                        letterSpacing: 0.5,
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: const Color(0xFF3D3530),
+                          width: 0.5,
+                        ),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        'Editează',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Color(0xFFC4B9A8),
+                          letterSpacing: 0.5,
+                        ),
                       ),
                     ),
                   ),
@@ -339,7 +352,7 @@ class _PhotographerDashboardScreenState
       children: actions.map((action) {
         return Expanded(
           child: GestureDetector(
-            onTap: () {
+            onTap: () async {
               if (action['label'] == 'Adaugă foto') {
                 Navigator.push(context, MaterialPageRoute(
                   builder: (_) => const MyPhotosScreen(),
@@ -348,6 +361,11 @@ class _PhotographerDashboardScreenState
                 Navigator.push(context, MaterialPageRoute(
                   builder: (_) => const CalendarEditScreen(),
                 ));
+              } else if (action['label'] == 'Editează') {
+                Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => const EditProfileScreen(),
+                ));
+                await _loadUser();
               }
             },
             child: Container(

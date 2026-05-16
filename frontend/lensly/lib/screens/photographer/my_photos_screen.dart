@@ -1,4 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:lensly/services/upload_service.dart';
+import 'package:lensly/services/auth_service.dart';
+import 'package:lensly/services/photo_service.dart';
+import 'package:http/http.dart' as http;
 
 class MyPhotosScreen extends StatefulWidget {
   const MyPhotosScreen({super.key});
@@ -9,26 +15,260 @@ class MyPhotosScreen extends StatefulWidget {
 
 class _MyPhotosScreenState extends State<MyPhotosScreen> {
   String _selectedFilter = 'Toate';
+  List<Map<String, dynamic>> _photos = [];
+  bool _isLoading = true;
+  Map<String, dynamic>? _currentUser;
 
   final List<String> _filters = [
-    'Toate', 'Wedding', 'Dreamy', 'Couple', 'Editorial', 'Portrait'
+    'Toate', 'Wedding', 'Dreamy', 'Couple',
+    'Editorial', 'Portrait', 'Cinematic', 'Pregnancy'
   ];
 
-  final List<Map<String, dynamic>> _photos = [
-    {'color': 0xFFB0A090, 'category': 'Wedding'},
-    {'color': 0xFFC4B4A4, 'category': 'Dreamy'},
-    {'color': 0xFF9C8C7C, 'category': 'Couple'},
-    {'color': 0xFFD4C4B4, 'category': 'Wedding'},
-    {'color': 0xFFA89888, 'category': 'Dreamy'},
-    {'color': 0xFFBCA898, 'category': 'Editorial'},
-    {'color': 0xFF8C7C6C, 'category': 'Portrait'},
-    {'color': 0xFFC8B4A0, 'category': 'Couple'},
-    {'color': 0xFFA09080, 'category': 'Wedding'},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final user = await AuthService.getUser();
+    setState(() => _currentUser = user);
+
+    if (user != null) {
+      await _loadPhotos(user['id']);
+    }
+  }
+
+  Future<void> _loadPhotos(int photographerId) async {
+    setState(() => _isLoading = true);
+    final photos = await PhotoService.getPhotographerPhotos(photographerId);
+    setState(() {
+      _photos = photos;
+      _isLoading = false;
+    });
+  }
 
   List<Map<String, dynamic>> get _filteredPhotos {
     if (_selectedFilter == 'Toate') return _photos;
-    return _photos.where((p) => p['category'] == _selectedFilter).toList();
+    return _photos
+        .where((p) => p['category'] == _selectedFilter)
+        .toList();
+  }
+
+  Future<void> _pickAndUploadImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+
+    if (picked == null) return;
+
+    _showUploadDialog(File(picked.path));
+  }
+
+  void _showUploadDialog(File imageFile) {
+    final titleController = TextEditingController();
+    String selectedCategory = 'Dreamy';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFFFAF8F5),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 20,
+            right: 20,
+            top: 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 32,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8E3DA),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // preview imagine
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.file(
+                  imageFile,
+                  height: 150,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(height: 16),
+              // titlu
+              const Text(
+                'TITLU',
+                style: TextStyle(
+                  fontSize: 9,
+                  letterSpacing: 1.5,
+                  color: Color(0xFFC4B9A8),
+                ),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: titleController,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF3D3530),
+                ),
+                decoration: InputDecoration(
+                  hintText: 'ex: Lumini de toamnă',
+                  hintStyle: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFFC4B9A8),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFFEDEAE4),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 14),
+              // categorie
+              const Text(
+                'CATEGORIE',
+                style: TextStyle(
+                  fontSize: 9,
+                  letterSpacing: 1.5,
+                  color: Color(0xFFC4B9A8),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: _filters.skip(1).map((cat) {
+                  final isSelected = cat == selectedCategory;
+                  return GestureDetector(
+                    onTap: () => setModalState(
+                        () => selectedCategory = cat),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? const Color(0xFF3D3530)
+                            : const Color(0xFFEDEAE4),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        cat,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isSelected
+                              ? const Color(0xFFF5F2EC)
+                              : const Color(0xFF8C7B6B),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              // buton upload
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    await _uploadPhoto(
+                      imageFile,
+                      titleController.text,
+                      selectedCategory,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF3D3530),
+                    foregroundColor: const Color(0xFFF5F2EC),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Publică în portofoliu',
+                    style: TextStyle(
+                      fontSize: 13,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _uploadPhoto(
+      File imageFile, String title, String category) async {
+    if (_currentUser == null) return;
+
+    // aratam loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFF8C7B6B),
+        ),
+      ),
+    );
+
+    final result = await UploadService.uploadPhoto(
+      imageFile: imageFile,
+      photographerId: _currentUser!['id'],
+      category: category,
+      title: title.isEmpty ? null : title,
+    );
+
+    Navigator.pop(context); // inchidem loading
+
+    if (result != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Fotografie publicată cu succes!'),
+          backgroundColor: Color(0xFF1D9E75),
+        ),
+      );
+      await _loadPhotos(_currentUser!['id']);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Eroare la upload. Încearcă din nou.'),
+          backgroundColor: Color(0xFFE24B4A),
+        ),
+      );
+    }
   }
 
   @override
@@ -40,7 +280,15 @@ class _MyPhotosScreenState extends State<MyPhotosScreen> {
           children: [
             _buildHeader(),
             _buildFilters(),
-            Expanded(child: _buildGrid()),
+            Expanded(
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF8C7B6B),
+                      ),
+                    )
+                  : _buildGrid(),
+            ),
             _buildFooter(),
           ],
         ),
@@ -75,17 +323,20 @@ class _MyPhotosScreenState extends State<MyPhotosScreen> {
               ),
             ],
           ),
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: const Color(0xFF3D3530),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.add,
-              color: Color(0xFFF5F2EC),
-              size: 18,
+          GestureDetector(
+            onTap: _pickAndUploadImage,
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: const Color(0xFF3D3530),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.add,
+                color: Color(0xFFF5F2EC),
+                size: 18,
+              ),
             ),
           ),
         ],
@@ -157,13 +408,22 @@ class _MyPhotosScreenState extends State<MyPhotosScreen> {
   Widget _buildPhotoCell(Map<String, dynamic> photo) {
     return Stack(
       children: [
-        Container(
-          decoration: BoxDecoration(
-            color: Color(photo['color']),
-            borderRadius: BorderRadius.circular(6),
-          ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: photo['image_url'] != null
+              ? Image.network(
+                  photo['image_url'],
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: const Color(0xFFC4B9A8),
+                  ),
+                )
+              : Container(
+                  color: const Color(0xFFC4B9A8),
+                ),
         ),
-        // overlay con opzioni
         Positioned(
           top: 4,
           right: 4,
@@ -189,29 +449,31 @@ class _MyPhotosScreenState extends State<MyPhotosScreen> {
   }
 
   Widget _buildAddCell() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8E3DA),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: const Color(0xFFC4B9A8),
-          width: 1,
-          style: BorderStyle.solid,
-        ),
-      ),
-      child: const Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.add, color: Color(0xFFC4B9A8), size: 22),
-          SizedBox(height: 2),
-          Text(
-            'Adaugă',
-            style: TextStyle(
-              fontSize: 9,
-              color: Color(0xFFC4B9A8),
-            ),
+    return GestureDetector(
+      onTap: _pickAndUploadImage,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFE8E3DA),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: const Color(0xFFC4B9A8),
+            width: 1,
           ),
-        ],
+        ),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add, color: Color(0xFFC4B9A8), size: 22),
+            SizedBox(height: 2),
+            Text(
+              'Adaugă',
+              style: TextStyle(
+                fontSize: 9,
+                color: Color(0xFFC4B9A8),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -228,7 +490,7 @@ class _MyPhotosScreenState extends State<MyPhotosScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            '${_photos.length} fotografii · ${_filters.length - 1} categorii',
+            '${_photos.length} fotografii',
             style: const TextStyle(
               fontSize: 11,
               color: Color(0xFFC4B9A8),
@@ -267,13 +529,24 @@ class _MyPhotosScreenState extends State<MyPhotosScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            _buildOption(Icons.edit_outlined, 'Editează categoria', () {
-              Navigator.pop(context);
-            }),
-            _buildOption(Icons.delete_outline, 'Șterge fotografia', () {
-              setState(() => _photos.remove(photo));
-              Navigator.pop(context);
-            }, isDestructive: true),
+            _buildOption(
+              Icons.delete_outline,
+              'Șterge fotografia',
+              () async {
+                Navigator.pop(context);
+                // stergere din backend
+                final token = await AuthService.getToken();
+                if (token != null && photo['id'] != null) {
+                  await http.delete(
+                    Uri.parse(
+                        'http://10.0.2.2:3000/api/photos/${photo['id']}'),
+                    headers: {'Authorization': 'Bearer $token'},
+                  );
+                  await _loadPhotos(_currentUser!['id']);
+                }
+              },
+              isDestructive: true,
+            ),
           ],
         ),
       ),

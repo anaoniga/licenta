@@ -19,5 +19,13 @@ pool.connect((err, client, release) => {
 
 const GEMINI_API_KEY = 'AIzaSyBALBOT0kW4J_4oGrOoujiswQ3c5v0V0F8';
 
+const CLOUDINARY_CLOUD_NAME = 'Ana Oniga';
+const CLOUDINARY_API_KEY = '178427792657746';
+const CLOUDINARY_API_SECRET = 'Zyn2hjkUfZ8-BwamBB-ekAOMcf8';
+
+module.exports.CLOUDINARY_CLOUD_NAME = CLOUDINARY_CLOUD_NAME;
+module.exports.CLOUDINARY_API_KEY = CLOUDINARY_API_KEY;
+module.exports.CLOUDINARY_API_SECRET = CLOUDINARY_API_SECRET;
+
 module.exports = pool;
 module.exports.GEMINI_API_KEY = GEMINI_API_KEY;

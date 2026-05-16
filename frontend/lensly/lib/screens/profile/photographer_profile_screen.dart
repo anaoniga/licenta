@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:lensly/services/calendar_service.dart';
+import 'package:lensly/services/auth_service.dart';
+import 'package:lensly/services/message_service.dart';
+import 'package:lensly/screens/chat/messages_screen.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class PhotographerProfileScreen extends StatefulWidget {
   final Map<String, dynamic> photographer;
+  final int initialTab;
 
   const PhotographerProfileScreen({
     super.key,
     required this.photographer,
+    this.initialTab = 0,
   });
 
   @override
@@ -16,14 +23,14 @@ class PhotographerProfileScreen extends StatefulWidget {
 
 class _PhotographerProfileScreenState
     extends State<PhotographerProfileScreen> {
-  int _selectedTab = 0;
+  late int _selectedTab;
   bool _isSaved = false;
-
-  // calendar din API
   Map<int, String> _calendarEvents = {};
   bool _calendarLoading = true;
   int _currentMonth = DateTime.now().month;
   int _currentYear = DateTime.now().year;
+  List<String> _specializations = [];
+  List<Map<String, dynamic>> _portfolioPhotos = [];
 
   final List<String> _monthNames = [
     '', 'Ianuarie', 'Februarie', 'Martie', 'Aprilie',
@@ -40,6 +47,7 @@ class _PhotographerProfileScreenState
   @override
   void initState() {
     super.initState();
+    _selectedTab = widget.initialTab;
     _loadCalendar();
   }
 
@@ -48,6 +56,8 @@ class _PhotographerProfileScreenState
 
     final photographerId = widget.photographer['photographer_id']
         ?? widget.photographer['id'];
+
+    
 
     if (photographerId == null) {
       setState(() => _calendarLoading = false);
@@ -68,6 +78,41 @@ class _PhotographerProfileScreenState
       }
       _calendarLoading = false;
     });
+
+    try {
+      final token = await AuthService.getToken();
+
+      final response = await http.get(
+        Uri.parse('http://10.0.2.2:3000/api/users/$photographerId'),
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final specs = data['specializations'];
+        if (specs != null && specs is List) {
+          setState(() {
+            _specializations = List<String>.from(specs);
+          });
+        }
+      }
+
+      final photosResponse = await http.get(
+        Uri.parse('http://10.0.2.2:3000/api/photos/photographer/$photographerId'),
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+      if (photosResponse.statusCode == 200) {
+        final photosData = jsonDecode(photosResponse.body);
+        setState(() {
+          _portfolioPhotos = List<Map<String, dynamic>>.from(photosData);
+        });
+      }
+    } catch (e) {
+      print('Eroare profil: $e');
+    }
   }
 
   @override
@@ -191,6 +236,10 @@ class _PhotographerProfileScreenState
         ?? widget.photographer['style']
         ?? '';
 
+    final tags = _specializations.isNotEmpty
+        ? _specializations
+        : [category, 'Natural light', 'Outdoor'];
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 36, 16, 8),
       child: Column(
@@ -215,12 +264,8 @@ class _PhotographerProfileScreenState
           const SizedBox(height: 8),
           Wrap(
             spacing: 5,
-            children: [
-              category,
-              'Film look',
-              'Natural light',
-              'Outdoor',
-            ].map((tag) => Container(
+            runSpacing: 5,
+            children: tags.map((tag) => Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: 8,
                 vertical: 3,
@@ -348,6 +393,18 @@ class _PhotographerProfileScreenState
   }
 
   Widget _buildPortfolio() {
+    if (_portfolioPhotos.isEmpty) {
+      return const Center(
+        child: Text(
+          'Nicio fotografie încă',
+          style: TextStyle(
+            fontSize: 13,
+            color: Color(0xFFC4B9A8),
+          ),
+        ),
+      );
+    }
+
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -355,12 +412,36 @@ class _PhotographerProfileScreenState
         crossAxisSpacing: 3,
         mainAxisSpacing: 3,
       ),
-      itemCount: _portfolioColors.length,
+      itemCount: _portfolioPhotos.length,
       itemBuilder: (context, index) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Color(_portfolioColors[index]),
+        final photo = _portfolioPhotos[index];
+        return GestureDetector(
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (_) => Dialog(
+                backgroundColor: Colors.transparent,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.network(
+                    photo['image_url'],
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            );
+          },
+          child: ClipRRect(
             borderRadius: BorderRadius.circular(5),
+            child: photo['image_url'] != null
+                ? Image.network(
+                    photo['image_url'],
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: const Color(0xFFC4B9A8),
+                    ),
+                  )
+                : Container(color: const Color(0xFFC4B9A8)),
           ),
         );
       },
@@ -381,7 +462,6 @@ class _PhotographerProfileScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // navigare luna
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -634,7 +714,33 @@ class _PhotographerProfileScreenState
         children: [
           Expanded(
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: () async {
+                final currentUser = await AuthService.getUser();
+                if (currentUser == null) return;
+
+                final photographerId = widget.photographer['photographer_id']
+                    ?? widget.photographer['id'];
+
+                final conversation = await MessageService.createConversation(
+                  clientId: currentUser['id'],
+                  photographerId: photographerId,
+                );
+
+                if (conversation != null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ConversationScreen(
+                        conversation: conversation,
+                        currentUser: currentUser,
+                        otherName: widget.photographer['photographer_name']
+                            ?? widget.photographer['name']
+                            ?? '',
+                      ),
+                    ),
+                  );
+                }
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF3D3530),
                 foregroundColor: const Color(0xFFF5F2EC),
@@ -653,7 +759,9 @@ class _PhotographerProfileScreenState
           const SizedBox(width: 8),
           Expanded(
             child: OutlinedButton(
-              onPressed: () {},
+              onPressed: () {
+                setState(() => _selectedTab = 1);
+              },
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFF8C7B6B),
                 padding: const EdgeInsets.symmetric(vertical: 13),
