@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/auth/login_screen.dart';
+
 void main() {
   runApp(const LenslyApp());
 }
@@ -13,13 +14,12 @@ class LenslyApp extends StatelessWidget {
       title: 'Lensly',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        scaffoldBackgroundColor: const Color(0xFFEDEAE4),
+        scaffoldBackgroundColor: const Color(0xFFF5F2EC),
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF3D3530),
         ),
       ),
       home: const LoginScreen(),
-            );
-    
+    );
   }
 }

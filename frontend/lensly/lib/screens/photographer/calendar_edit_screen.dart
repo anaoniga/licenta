@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:lensly/services/calendar_service.dart';
+import 'package:lensly/services/auth_service.dart';
 
 class CalendarEditScreen extends StatefulWidget {
   const CalendarEditScreen({super.key});
@@ -9,19 +11,12 @@ class CalendarEditScreen extends StatefulWidget {
 
 class _CalendarEditScreenState extends State<CalendarEditScreen> {
   bool _isEditMode = true;
-  int _currentMonth = 7; // iulie
-  int _currentYear = 2025;
+  int _currentMonth = DateTime.now().month;
+  int _currentYear = DateTime.now().year;
 
-  // cheie = ziua, valoare = status
-  final Map<int, String> _events = {
-    5: 'booked', 6: 'booked',
-    12: 'booked', 13: 'booked',
-    15: 'available', 16: 'available',
-    18: 'available', 19: 'available',
-    20: 'booked', 26: 'booked',
-    27: 'booked', 29: 'available',
-    30: 'available', 31: 'available',
-  };
+  Map<String, Map<String, dynamic>> _events = {};
+  bool _isLoading = true;
+  int? _photographerId;
 
   int? _selectedDay;
   String _selectedType = 'available';
@@ -34,9 +29,46 @@ class _CalendarEditScreenState extends State<CalendarEditScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    final user = await AuthService.getUser();
+    if (user != null) {
+      _photographerId = user['id'];
+      await _loadEvents();
+    }
+    setState(() => _isLoading = false);
+  }
+
+  Future<void> _loadEvents() async {
+    if (_photographerId == null) return;
+    final events = await CalendarService.getEvents(
+      photographerId: _photographerId!,
+      month: _currentMonth,
+      year: _currentYear,
+    );
+    setState(() {
+      _events = {};
+      for (final event in events) {
+        final date = DateTime.parse(event['date']);
+        final key = '${date.year}-${date.month}-${date.day}';
+        _events[key] = event;
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _titleController.dispose();
     super.dispose();
+  }
+
+  String _getEventKey(int day) {
+    return '$_currentYear-$_currentMonth-$day';
   }
 
   @override
@@ -44,27 +76,33 @@ class _CalendarEditScreenState extends State<CalendarEditScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F2EC),
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    _buildCalendar(),
-                    const SizedBox(height: 12),
-                    _buildLegend(),
-                    if (_isEditMode && _selectedDay != null) ...[
-                      const SizedBox(height: 16),
-                      _buildAddEventPanel(),
-                    ],
-                  ],
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFF8C7B6B),
                 ),
+              )
+            : Column(
+                children: [
+                  _buildHeader(),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          _buildCalendar(),
+                          const SizedBox(height: 12),
+                          _buildLegend(),
+                          if (_isEditMode && _selectedDay != null) ...[
+                            const SizedBox(height: 16),
+                            _buildAddEventPanel(),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -96,7 +134,6 @@ class _CalendarEditScreenState extends State<CalendarEditScreen> {
               ),
             ],
           ),
-          // toggle editare / preview
           Container(
             decoration: BoxDecoration(
               color: const Color(0xFFE8E3DA),
@@ -147,19 +184,21 @@ class _CalendarEditScreenState extends State<CalendarEditScreen> {
       ),
       child: Column(
         children: [
-          // navigare luna
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               GestureDetector(
-                onTap: () => setState(() {
-                  if (_currentMonth == 1) {
-                    _currentMonth = 12;
-                    _currentYear--;
-                  } else {
-                    _currentMonth--;
-                  }
-                }),
+                onTap: () async {
+                  setState(() {
+                    if (_currentMonth == 1) {
+                      _currentMonth = 12;
+                      _currentYear--;
+                    } else {
+                      _currentMonth--;
+                    }
+                  });
+                  await _loadEvents();
+                },
                 child: const Icon(
                   Icons.chevron_left,
                   color: Color(0xFFC4B9A8),
@@ -175,14 +214,17 @@ class _CalendarEditScreenState extends State<CalendarEditScreen> {
                 ),
               ),
               GestureDetector(
-                onTap: () => setState(() {
-                  if (_currentMonth == 12) {
-                    _currentMonth = 1;
-                    _currentYear++;
-                  } else {
-                    _currentMonth++;
-                  }
-                }),
+                onTap: () async {
+                  setState(() {
+                    if (_currentMonth == 12) {
+                      _currentMonth = 1;
+                      _currentYear++;
+                    } else {
+                      _currentMonth++;
+                    }
+                  });
+                  await _loadEvents();
+                },
                 child: const Icon(
                   Icons.chevron_right,
                   color: Color(0xFFC4B9A8),
@@ -192,7 +234,6 @@ class _CalendarEditScreenState extends State<CalendarEditScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          // zilele saptamanii
           Row(
             children: ['Lu', 'Ma', 'Mi', 'Jo', 'Vi', 'Sa', 'Du']
                 .map((day) => Expanded(
@@ -209,7 +250,6 @@ class _CalendarEditScreenState extends State<CalendarEditScreen> {
                 .toList(),
           ),
           const SizedBox(height: 8),
-          // grid zile
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -221,7 +261,7 @@ class _CalendarEditScreenState extends State<CalendarEditScreen> {
             ),
             itemCount: 35,
             itemBuilder: (context, index) {
-              final day = index - 1; // iulie incepe marti
+              final day = index - 1;
               if (day <= 0 || day > 31) {
                 return const SizedBox.shrink();
               }
@@ -234,9 +274,13 @@ class _CalendarEditScreenState extends State<CalendarEditScreen> {
   }
 
   Widget _buildDayCell(int day) {
-    final status = _events[day];
+    final key = _getEventKey(day);
+    final event = _events[key];
+    final status = event?['type'];
     final isSelected = _selectedDay == day;
-    final isToday = day == 10;
+    final isToday = day == DateTime.now().day &&
+        _currentMonth == DateTime.now().month &&
+        _currentYear == DateTime.now().year;
 
     Color bgColor = Colors.transparent;
     Color textColor = const Color(0xFF3D3530);
@@ -258,7 +302,16 @@ class _CalendarEditScreenState extends State<CalendarEditScreen> {
     return GestureDetector(
       onTap: () {
         if (_isEditMode) {
-          setState(() => _selectedDay = day);
+          setState(() {
+            _selectedDay = day;
+            _titleController.clear();
+            if (event != null) {
+              _selectedType = event['type'];
+              _titleController.text = event['title'] ?? '';
+            } else {
+              _selectedType = 'available';
+            }
+          });
         }
       },
       child: Container(
@@ -266,10 +319,7 @@ class _CalendarEditScreenState extends State<CalendarEditScreen> {
           color: bgColor,
           borderRadius: BorderRadius.circular(5),
           border: isToday && !isSelected
-              ? Border.all(
-                  color: const Color(0xFF3D3530),
-                  width: 1,
-                )
+              ? Border.all(color: const Color(0xFF3D3530), width: 1)
               : null,
         ),
         child: Center(
@@ -312,16 +362,16 @@ class _CalendarEditScreenState extends State<CalendarEditScreen> {
         const SizedBox(width: 5),
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 10,
-            color: Color(0xFF8C7B6B),
-          ),
+          style: const TextStyle(fontSize: 10, color: Color(0xFF8C7B6B)),
         ),
       ],
     );
   }
 
   Widget _buildAddEventPanel() {
+    final key = _getEventKey(_selectedDay!);
+    final existingEvent = _events[key];
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -341,13 +391,9 @@ class _CalendarEditScreenState extends State<CalendarEditScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          // titlu privat
           TextField(
             controller: _titleController,
-            style: const TextStyle(
-              fontSize: 13,
-              color: Color(0xFF3D3530),
-            ),
+            style: const TextStyle(fontSize: 13, color: Color(0xFF3D3530)),
             decoration: InputDecoration(
               hintText: 'Titlu privat (ex: Nuntă Popescu)',
               hintStyle: const TextStyle(
@@ -368,7 +414,6 @@ class _CalendarEditScreenState extends State<CalendarEditScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          // tip eveniment
           Row(
             children: [
               _buildTypeButton('available', 'Disponibil',
@@ -382,17 +427,33 @@ class _CalendarEditScreenState extends State<CalendarEditScreen> {
             ],
           ),
           const SizedBox(height: 10),
-          // butoane save / delete
           Row(
             children: [
               Expanded(
                 child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _events[_selectedDay!] = _selectedType;
-                      _selectedDay = null;
-                      _titleController.clear();
-                    });
+                  onTap: () async {
+                    if (_photographerId == null) return;
+
+                    final dateStr =
+                        '$_currentYear-${_currentMonth.toString().padLeft(2, '0')}-${_selectedDay.toString().padLeft(2, '0')}';
+
+                    final success = await CalendarService.addEvent(
+                      photographerId: _photographerId!,
+                      date: dateStr,
+                      type: _selectedType,
+                      title: _titleController.text.isEmpty
+                          ? null
+                          : _titleController.text,
+                      isPublic: false,
+                    );
+
+                    if (success) {
+                      await _loadEvents();
+                      setState(() {
+                        _selectedDay = null;
+                        _titleController.clear();
+                      });
+                    }
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 10),
@@ -413,32 +474,37 @@ class _CalendarEditScreenState extends State<CalendarEditScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _events.remove(_selectedDay);
-                    _selectedDay = null;
-                    _titleController.clear();
-                  });
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFAE8E8),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text(
-                    'Șterge',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF8B2E2E),
+              if (existingEvent != null)
+                GestureDetector(
+                  onTap: () async {
+                    final eventId = existingEvent['id'];
+                    if (eventId != null) {
+                      await CalendarService.deleteEvent(eventId);
+                      await _loadEvents();
+                      setState(() {
+                        _selectedDay = null;
+                        _titleController.clear();
+                      });
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFAE8E8),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'Șterge',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF8B2E2E),
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ],

@@ -1,6 +1,5 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:lensly/services/calendar_service.dart';
 
 class PhotographerProfileScreen extends StatefulWidget {
   final Map<String, dynamic> photographer;
@@ -20,25 +19,56 @@ class _PhotographerProfileScreenState
   int _selectedTab = 0;
   bool _isSaved = false;
 
-  final Map<int, String> _calendarEvents = {
-    5: 'booked', 6: 'booked',
-    12: 'booked', 13: 'booked',
-    15: 'available', 16: 'available',
-    18: 'available', 19: 'available',
-    20: 'booked', 26: 'booked',
-    27: 'booked', 29: 'available',
-    30: 'available', 31: 'available',
-    2: 'available', 3: 'available',
-    7: 'available', 8: 'available',
-    11: 'available', 21: 'available',
-    23: 'available', 24: 'available',
-  };
+  // calendar din API
+  Map<int, String> _calendarEvents = {};
+  bool _calendarLoading = true;
+  int _currentMonth = DateTime.now().month;
+  int _currentYear = DateTime.now().year;
 
-  final List<int> _portofolioColors = [
+  final List<String> _monthNames = [
+    '', 'Ianuarie', 'Februarie', 'Martie', 'Aprilie',
+    'Mai', 'Iunie', 'Iulie', 'August', 'Septembrie',
+    'Octombrie', 'Noiembrie', 'Decembrie'
+  ];
+
+  final List<int> _portfolioColors = [
     0xFFB0A090, 0xFFC4B4A4, 0xFF9C8C7C,
     0xFFD4C4B4, 0xFFA89888, 0xFFBCA898,
     0xFF8C7C6C, 0xFFC8B4A0, 0xFFA09080,
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCalendar();
+  }
+
+  Future<void> _loadCalendar() async {
+    setState(() => _calendarLoading = true);
+
+    final photographerId = widget.photographer['photographer_id']
+        ?? widget.photographer['id'];
+
+    if (photographerId == null) {
+      setState(() => _calendarLoading = false);
+      return;
+    }
+
+    final events = await CalendarService.getEvents(
+      photographerId: photographerId,
+      month: _currentMonth,
+      year: _currentYear,
+    );
+
+    setState(() {
+      _calendarEvents = {};
+      for (final event in events) {
+        final date = DateTime.parse(event['date']);
+        _calendarEvents[date.day] = event['type'];
+      }
+      _calendarLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,9 +96,13 @@ class _PhotographerProfileScreenState
   }
 
   Widget _buildCover() {
+    final photographerName = widget.photographer['photographer_name']
+        ?? widget.photographer['name']
+        ?? 'NA';
+
     return Container(
       height: 100,
-      color: Color(widget.photographer['color'] ?? 0xFF9C8C7C),
+      color: const Color(0xFF9C8C7C),
       child: Stack(
         children: [
           Positioned(
@@ -91,7 +125,6 @@ class _PhotographerProfileScreenState
               ),
             ),
           ),
-
           Positioned(
             top: 12,
             right: 12,
@@ -114,7 +147,6 @@ class _PhotographerProfileScreenState
               ),
             ),
           ),
-
           Positioned(
             bottom: -28,
             left: 16,
@@ -131,10 +163,9 @@ class _PhotographerProfileScreenState
               ),
               child: Center(
                 child: Text(
-                  widget.photographer['name']
-                      .toString()
-                      .substring(0, 2)
-                      .toUpperCase(),
+                  photographerName.length >= 2
+                      ? photographerName.substring(0, 2).toUpperCase()
+                      : photographerName.toUpperCase(),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w300,
@@ -150,13 +181,23 @@ class _PhotographerProfileScreenState
   }
 
   Widget _buildInfo() {
+    final name = widget.photographer['photographer_name']
+        ?? widget.photographer['name']
+        ?? '';
+    final city = widget.photographer['photographer_city']
+        ?? widget.photographer['city']
+        ?? '';
+    final category = widget.photographer['category']
+        ?? widget.photographer['style']
+        ?? '';
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 36, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            widget.photographer['name'],
+            name,
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w300,
@@ -165,18 +206,17 @@ class _PhotographerProfileScreenState
           ),
           const SizedBox(height: 3),
           Text(
-            '📍 ${widget.photographer['city']} · ${widget.photographer['style']} · 5+ ani',
+            '📍 $city · $category · 5+ ani',
             style: const TextStyle(
               fontSize: 11,
               color: Color(0xFF8C7B6B),
             ),
           ),
           const SizedBox(height: 8),
-
           Wrap(
             spacing: 5,
             children: [
-              widget.photographer['style'],
+              category,
               'Film look',
               'Natural light',
               'Outdoor',
@@ -193,7 +233,7 @@ class _PhotographerProfileScreenState
                 tag,
                 style: const TextStyle(
                   fontSize: 10,
-                  color:  Color(0xFF8C7B6B),
+                  color: Color(0xFF8C7B6B),
                 ),
               ),
             )).toList(),
@@ -226,28 +266,29 @@ class _PhotographerProfileScreenState
 
   Widget _buildStat(String value, String label) {
     return Expanded(
-      child: Padding(padding: const EdgeInsetsGeometry.symmetric(vertical: 10),
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w300,
-              color: Color(0xFF3D3530),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w300,
+                color: Color(0xFF3D3530),
+              ),
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 8,
-              color: Color(0xFFC4B9A8),
-              letterSpacing: 0.5,
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 8,
+                color: Color(0xFFC4B9A8),
+                letterSpacing: 0.5,
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -309,12 +350,16 @@ class _PhotographerProfileScreenState
   Widget _buildPortfolio() {
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 3, mainAxisSpacing: 3),
-      itemCount: _portofolioColors.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 3,
+        mainAxisSpacing: 3,
+      ),
+      itemCount: _portfolioColors.length,
       itemBuilder: (context, index) {
         return Container(
           decoration: BoxDecoration(
-            color: Color(_portofolioColors[index]),
+            color: Color(_portfolioColors[index]),
             borderRadius: BorderRadius.circular(5),
           ),
         );
@@ -323,58 +368,98 @@ class _PhotographerProfileScreenState
   }
 
   Widget _buildCalendar() {
+    if (_calendarLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFF8C7B6B),
+        ),
+      );
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // navigare luna
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(Icons.chevron_left,
-                  color: Color(0xFFC4B9A8), size: 20),
-              const Text(
-                'Iulie 2025',
-                style: TextStyle(
+              GestureDetector(
+                onTap: () async {
+                  setState(() {
+                    if (_currentMonth == 1) {
+                      _currentMonth = 12;
+                      _currentYear--;
+                    } else {
+                      _currentMonth--;
+                    }
+                  });
+                  await _loadCalendar();
+                },
+                child: const Icon(
+                  Icons.chevron_left,
+                  color: Color(0xFFC4B9A8),
+                  size: 20,
+                ),
+              ),
+              Text(
+                '${_monthNames[_currentMonth]} $_currentYear',
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w300,
                   color: Color(0xFF3D3530),
                 ),
               ),
-              const Icon(Icons.chevron_right,
-                  color: Color(0xFFC4B9A8), size: 20),
+              GestureDetector(
+                onTap: () async {
+                  setState(() {
+                    if (_currentMonth == 12) {
+                      _currentMonth = 1;
+                      _currentYear++;
+                    } else {
+                      _currentMonth++;
+                    }
+                  });
+                  await _loadCalendar();
+                },
+                child: const Icon(
+                  Icons.chevron_right,
+                  color: Color(0xFFC4B9A8),
+                  size: 20,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
-
           Row(
             children: ['Lu', 'Ma', 'Mi', 'Jo', 'Vi', 'Sa', 'Du']
-                .map((day) => Expanded(child: Text(
-                  day,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Color(0xFFC4BA8),
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ))
-            .toList(),
+                .map((day) => Expanded(
+                      child: Text(
+                        day,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Color(0xFFC4B9A8),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ))
+                .toList(),
           ),
-        const SizedBox(height: 6),
-
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 7,
-            childAspectRatio: 1,
-            crossAxisSpacing: 2,
-            mainAxisSpacing: 2,
+          const SizedBox(height: 6),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              childAspectRatio: 1,
+              crossAxisSpacing: 2,
+              mainAxisSpacing: 2,
             ),
             itemCount: 35,
             itemBuilder: (context, index) {
-              final day = index -1;
+              final day = index - 1;
               if (day <= 0 || day > 31) {
                 return const SizedBox.shrink();
               }
@@ -383,7 +468,6 @@ class _PhotographerProfileScreenState
             },
           ),
           const SizedBox(height: 12),
-
           Row(
             children: [
               _buildLegendItem(const Color(0xFFD4EDE1), 'Disponibil'),
@@ -410,7 +494,10 @@ class _PhotographerProfileScreenState
       textColor = const Color(0xFF2D6A4F);
     }
 
-    final isToday = day == 10;
+    final isToday = day == DateTime.now().day &&
+        _currentMonth == DateTime.now().month &&
+        _currentYear == DateTime.now().year;
+
     return Container(
       decoration: BoxDecoration(
         color: bgColor,
@@ -456,6 +543,14 @@ class _PhotographerProfileScreenState
   }
 
   Widget _buildContact() {
+    final name = widget.photographer['photographer_name']
+        ?? widget.photographer['name']
+        ?? '';
+    final city = widget.photographer['photographer_city']
+        ?? widget.photographer['city']
+        ?? '';
+    final firstName = name.split(' ').first.toLowerCase();
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Column(
@@ -467,24 +562,24 @@ class _PhotographerProfileScreenState
           ),
           _buildContactItem(
             Icons.camera_alt_outlined,
-            'Instagram', 
-            '@${widget.photographer['name'].toString().split(' ')[0].toLowerCase()}.foto',
+            'Instagram',
+            '@$firstName.foto',
           ),
           _buildContactItem(
             Icons.email_outlined,
             'Email',
-            '${widget.photographer['name'].toString().split(' ')[0].toLowerCase()}@foto.ro',
+            '$firstName@foto.ro',
           ),
           _buildContactItem(
             Icons.location_on_outlined,
             'Locație',
-            widget.photographer['city'],
+            city,
           ),
         ],
       ),
     );
   }
-  
+
   Widget _buildContactItem(IconData icon, String label, String value) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -521,13 +616,13 @@ class _PhotographerProfileScreenState
         ],
       ),
     );
-  } 
+  }
 
   Widget _buildCTA() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       decoration: const BoxDecoration(
-        color: Color(0xFFFAF9F5),
+        color: Color(0xFFFAF8F5),
         border: Border(
           top: BorderSide(
             color: Color(0xFFE8E3DA),
@@ -551,10 +646,7 @@ class _PhotographerProfileScreenState
               ),
               child: const Text(
                 'Trimite mesaj',
-                style: TextStyle(
-                  fontSize: 12,
-                  letterSpacing: 1,
-                ),
+                style: TextStyle(fontSize: 12, letterSpacing: 1),
               ),
             ),
           ),
@@ -565,19 +657,14 @@ class _PhotographerProfileScreenState
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFF8C7B6B),
                 padding: const EdgeInsets.symmetric(vertical: 13),
-                side: const BorderSide(
-                  color: Color(0xFFE8E3DA),
-                ),
+                side: const BorderSide(color: Color(0xFFE8E3DA)),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
               child: const Text(
                 'Disponibilitate',
-                style: TextStyle(
-                  fontSize: 12,
-                  letterSpacing: 0.5,
-                ),
+                style: TextStyle(fontSize: 12, letterSpacing: 0.5),
               ),
             ),
           ),

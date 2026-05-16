@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:lensly/services/auth_service.dart';
+import 'package:lensly/screens/auth/login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -8,28 +10,44 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final String _userName = 'Ana Maria';
-  final String _userEmail = 'ana.maria@gmail.com';
+  String _userName = '';
+  String _userEmail = '';
 
   final List<Map<String, dynamic>> _notes = [
     {
       'text': 'Sesiune couple cu Ana Ionescu',
-      'date' : '19 iulie 2025 · outdoor dreamy',
+      'date': '19 iulie 2025 · outdoor dreamy',
       'isImportant': false,
     },
     {
-      'text' : 'Idei pentru shoot de toamnă',
-      'date' : 'Octombrie 2025 · de discutat',
+      'text': 'Idei pentru shoot de toamnă',
+      'date': 'Octombrie 2025 · de discutat',
       'isImportant': false,
     },
     {
       'text': 'Nuntă - fotograf de rezervat',
-      'date' : 'Iunie 2026 · urgent',
+      'date': 'Iunie 2026 · urgent',
       'isImportant': true,
     },
   ];
 
   final TextEditingController _noteController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    final user = await AuthService.getUser();
+    if (user != null) {
+      setState(() {
+        _userName = user['name'] ?? '';
+        _userEmail = user['email'] ?? '';
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -75,7 +93,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: 8),
-                    _buildNotesSelection(),
+                    _buildNotesSection(),
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -88,16 +106,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildHeader() {
+    final initials = _userName.length >= 2
+        ? _userName.substring(0, 2).toUpperCase()
+        : _userName.toUpperCase();
+
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
       child: Column(
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 36,
-            backgroundColor: Color(0xFFE8E3DA),
+            backgroundColor: const Color(0xFFE8E3DA),
             child: Text(
-              'AM',
-              style: TextStyle(
+              initials,
+              style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w300,
                 color: Color(0xFF8C7B6B),
@@ -105,7 +127,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 12),
-
           Text(
             _userName,
             style: const TextStyle(
@@ -116,7 +137,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 4),
-
           Text(
             _userEmail,
             style: const TextStyle(
@@ -126,7 +146,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 16),
-
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -142,7 +161,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildHeaderButton(String label, IconData icon) {
     return GestureDetector(
-      onTap: () {},
+      onTap: () async {
+        if (label == 'Ieșire cont') {
+          await AuthService.logout();
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
@@ -167,7 +195,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildNotesSelection() {
+  Widget _buildNotesSection() {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFFEDEAE4),
@@ -205,17 +233,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           const SizedBox(height: 14),
-
           ..._notes.asMap().entries.map((entry) {
             final index = entry.key;
             final note = entry.value;
             return _buildNoteItem(note, index);
           }),
-
           const SizedBox(height: 8),
           const Divider(color: Color(0xFFD3D1C7), height: 1),
           const SizedBox(height: 12),
-
           Row(
             children: [
               const Icon(
@@ -241,7 +266,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     isDense: true,
                     contentPadding: EdgeInsets.zero,
                   ),
-                  onSubmitted: (_) => _addNote,
+                  onSubmitted: (_) => _addNote(),
                 ),
               ),
               GestureDetector(
@@ -307,13 +332,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     fontSize: 10,
                     color: note['isImportant']
                         ? const Color(0xFFC9A96E)
-                        :const Color(0xFFC4B0A8),
+                        : const Color(0xFFC4B0A8),
                   ),
                 ),
               ],
             ),
           ),
-
           GestureDetector(
             onTap: () => _deleteNote(index),
             child: const Padding(
@@ -330,7 +354,3 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
-
-
-  
-  

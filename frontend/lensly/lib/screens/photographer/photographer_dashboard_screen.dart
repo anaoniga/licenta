@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:lensly/services/auth_service.dart';
 import 'my_photos_screen.dart';
 import 'calendar_edit_screen.dart';
-import '../chat/messages_screen.dart';
+import 'package:lensly/screens/auth/login_screen.dart';
 
 class PhotographerDashboardScreen extends StatefulWidget {
   const PhotographerDashboardScreen({super.key});
@@ -13,7 +14,7 @@ class PhotographerDashboardScreen extends StatefulWidget {
 
 class _PhotographerDashboardScreenState
     extends State<PhotographerDashboardScreen> {
-  int _currentIndex = 0;
+  Map<String, dynamic>? _user;
 
   final List<Map<String, dynamic>> _recentActivity = [
     {
@@ -51,6 +52,17 @@ class _PhotographerDashboardScreenState
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    final user = await AuthService.getUser();
+    setState(() => _user = user);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F2EC),
@@ -86,6 +98,12 @@ class _PhotographerDashboardScreenState
   }
 
   Widget _buildDarkHeader() {
+    final name = _user?['name'] ?? 'Fotograf';
+    final city = _user?['city'] ?? '';
+    final initials = name.length >= 2
+        ? name.substring(0, 2).toUpperCase()
+        : name.toUpperCase();
+
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       color: const Color(0xFF1C1917),
@@ -96,12 +114,12 @@ class _PhotographerDashboardScreenState
             children: [
               Row(
                 children: [
-                  const CircleAvatar(
+                  CircleAvatar(
                     radius: 22,
-                    backgroundColor: Color(0xFF3D3530),
+                    backgroundColor: const Color(0xFF3D3530),
                     child: Text(
-                      'AI',
-                      style: TextStyle(
+                      initials,
+                      style: const TextStyle(
                         fontSize: 13,
                         color: Color(0xFFC4B9A8),
                         fontWeight: FontWeight.w300,
@@ -109,20 +127,22 @@ class _PhotographerDashboardScreenState
                     ),
                   ),
                   const SizedBox(width: 10),
-                  const Column(
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Ana Ionescu',
-                        style: TextStyle(
+                        name,
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w300,
                           color: Color(0xFFFAF8F5),
                         ),
                       ),
                       Text(
-                        'FOTOGRAF · CLUJ',
-                        style: TextStyle(
+                        city.isNotEmpty
+                            ? 'FOTOGRAF · ${city.toUpperCase()}'
+                            : 'FOTOGRAF',
+                        style: const TextStyle(
                           fontSize: 8,
                           letterSpacing: 1.5,
                           color: Color(0xFFC4B9A8),
@@ -132,31 +152,66 @@ class _PhotographerDashboardScreenState
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: const Color(0xFF3D3530),
-                    width: 0.5,
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: const Color(0xFF3D3530),
+                        width: 0.5,
+                      ),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'Editează',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Color(0xFFC4B9A8),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text(
-                  'Editează',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Color(0xFFC4B9A8),
-                    letterSpacing: 0.5,
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () async {
+                      await AuthService.logout();
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                        (route) => false,
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: const Color(0xFF3D3530),
+                          width: 0.5,
+                        ),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        'Ieșire',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Color(0xFFC4B9A8),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
           const SizedBox(height: 16),
-          // statistici
           Row(
             children: [
               _buildDarkStat('248', 'Lucrări'),
@@ -340,8 +395,7 @@ class _PhotographerDashboardScreenState
           ),
           child: Row(
             children: [
-              // data
-              Container(
+              SizedBox(
                 width: 40,
                 child: Column(
                   children: [
@@ -371,7 +425,6 @@ class _PhotographerDashboardScreenState
                 color: const Color(0xFFD3D1C7),
                 margin: const EdgeInsets.symmetric(horizontal: 10),
               ),
-              // info sesiune
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -394,7 +447,6 @@ class _PhotographerDashboardScreenState
                   ],
                 ),
               ),
-              // badge status
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 8,

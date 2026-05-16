@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:lensly/services/message_service.dart';
+import 'package:lensly/services/auth_service.dart';
 
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
@@ -9,62 +11,55 @@ class MessagesScreen extends StatefulWidget {
 
 class _MessagesScreenState extends State<MessagesScreen> {
   final TextEditingController _searchController = TextEditingController();
+  List<Map<String, dynamic>> _conversations = [];
+  bool _isLoading = true;
+  Map<String, dynamic>? _currentUser;
 
-  final List<Map<String, dynamic>> _conversations = [
-    {
-      'name': 'Ana Ionescu',
-      'lastMessage': 'Bună ziua! Referitor la sesiunea din iulie...',
-      'time': '10:24',
-      'unread': 2,
-      'color': 0xFFB0A090,
-      'isOnline': true,
-    },
-    {
-      'name': 'Mihai Popa',
-      'lastMessage': 'Disponibil în 19 iulie, da!',
-      'time': 'ieri',
-      'unread': 0,
-      'color': 0xFFC4B4A4,
-      'isOnline': false,
-    },
-    {
-      'name': 'Laura Marinescu',
-      'lastMessage': 'Vă trimit oferta în scurt timp',
-      'time': 'lun',
-      'unread': 0,
-      'color': 0xFFD4C4B4,
-      'isOnline': true,
-    },
-    {
-      'name': 'Radu Cristea',
-      'lastMessage': 'Mulțumesc pentru mesaj!',
-      'time': 'lun',
-      'unread': 0,
-      'color': 0xFF9C8C7C,
-      'isOnline': false,
-    },
-    {
-      'name': 'Mara Dumitru',
-      'lastMessage': 'Cu plăcere! Aștept confirmarea.',
-      'time': 'dum',
-      'unread': 1,
-      'color': 0xFFBCA898,
-      'isOnline': false,
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+    MessageService.connectSocket();
+  }
 
-  List<Map<String, dynamic>> get _filteredConversations {
-    if (_searchController.text.isEmpty) return _conversations;
-    return _conversations.where((conv) =>
-      conv['name'].toString().toLowerCase()
-          .contains(_searchController.text.toLowerCase())
-    ).toList();
+  Future<void> _loadData() async {
+    final user = await AuthService.getUser();
+    setState(() => _currentUser = user);
+
+    if (user != null) {
+      final conversations = await MessageService.getConversations(user['id']);
+      setState(() {
+        _conversations = conversations;
+        _isLoading = false;
+      });
+    } else {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  List<Map<String, dynamic>> get _filteredConversations {
+    if (_searchController.text.isEmpty) return _conversations;
+    return _conversations.where((conv) {
+      final clientName = conv['client_name']?.toString().toLowerCase() ?? '';
+      final photographerName =
+          conv['photographer_name']?.toString().toLowerCase() ?? '';
+      final search = _searchController.text.toLowerCase();
+      return clientName.contains(search) || photographerName.contains(search);
+    }).toList();
+  }
+
+  String _getOtherPersonName(Map<String, dynamic> conv) {
+    if (_currentUser == null) return '';
+    final isClient = _currentUser!['id'] == conv['client_id'];
+    return isClient
+        ? conv['photographer_name'] ?? ''
+        : conv['client_name'] ?? '';
   }
 
   @override
@@ -77,7 +72,13 @@ class _MessagesScreenState extends State<MessagesScreen> {
             _buildHeader(),
             _buildSearchBar(),
             Expanded(
-              child: _buildConversationsList(),
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF8C7B6B),
+                      ),
+                    )
+                  : _buildConversationsList(),
             ),
           ],
         ),
@@ -101,28 +102,18 @@ class _MessagesScreenState extends State<MessagesScreen> {
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 5,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
               color: const Color(0xFFEDEAE4),
               borderRadius: BorderRadius.circular(20),
             ),
             child: const Row(
               children: [
-                Icon(
-                  Icons.edit_outlined,
-                  size: 13,
-                  color: Color(0xFF8C7B6B),
-                ),
+                Icon(Icons.edit_outlined, size: 13, color: Color(0xFF8C7B6B)),
                 SizedBox(width: 4),
                 Text(
                   'Nou',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF8C7B6B),
-                  ),
+                  style: TextStyle(fontSize: 11, color: Color(0xFF8C7B6B)),
                 ),
               ],
             ),
@@ -138,31 +129,21 @@ class _MessagesScreenState extends State<MessagesScreen> {
       child: TextField(
         controller: _searchController,
         onChanged: (_) => setState(() {}),
-        style: const TextStyle(
-          fontSize: 13,
-          color: Color(0xFF3D3530),
-        ),
+        style: const TextStyle(fontSize: 13, color: Color(0xFF3D3530)),
         decoration: InputDecoration(
           hintText: 'Caută conversație...',
-          hintStyle: const TextStyle(
-            fontSize: 13,
-            color: Color(0xFFC4B9A8),
-          ),
-          prefixIcon: const Icon(
-            Icons.search,
-            color: Color(0xFFC4B9A8),
-            size: 18,
-          ),
+          hintStyle:
+              const TextStyle(fontSize: 13, color: Color(0xFFC4B9A8)),
+          prefixIcon: const Icon(Icons.search,
+              color: Color(0xFFC4B9A8), size: 18),
           filled: true,
           fillColor: const Color(0xFFEDEAE4),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
           ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 10,
-          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         ),
       ),
     );
@@ -174,11 +155,8 @@ class _MessagesScreenState extends State<MessagesScreen> {
     if (conversations.isEmpty) {
       return const Center(
         child: Text(
-          'Nicio conversație găsită',
-          style: TextStyle(
-            fontSize: 14,
-            color: Color(0xFFC4B9A8),
-          ),
+          'Nicio conversație încă',
+          style: TextStyle(fontSize: 14, color: Color(0xFFC4B9A8)),
         ),
       );
     }
@@ -192,7 +170,14 @@ class _MessagesScreenState extends State<MessagesScreen> {
   }
 
   Widget _buildConversationItem(Map<String, dynamic> conversation) {
-    final hasUnread = conversation['unread'] > 0;
+    final otherName = _getOtherPersonName(conversation);
+    final unread = int.tryParse(
+            conversation['unread_count']?.toString() ?? '0') ??
+        0;
+    final hasUnread = unread > 0;
+    final initials = otherName.length >= 2
+        ? otherName.substring(0, 2).toUpperCase()
+        : otherName.toUpperCase();
 
     return GestureDetector(
       onTap: () {
@@ -201,21 +186,18 @@ class _MessagesScreenState extends State<MessagesScreen> {
           MaterialPageRoute(
             builder: (_) => ConversationScreen(
               conversation: conversation,
+              currentUser: _currentUser!,
+              otherName: otherName,
             ),
           ),
         );
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: const BoxDecoration(
           border: Border(
-            bottom: BorderSide(
-              color: Color(0xFFE8E3DA),
-              width: 0.5,
-            ),
+            bottom: BorderSide(color: Color(0xFFE8E3DA), width: 0.5),
           ),
         ),
         child: Row(
@@ -224,12 +206,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
               children: [
                 CircleAvatar(
                   radius: 24,
-                  backgroundColor: Color(conversation['color']),
+                  backgroundColor: const Color(0xFFC4B4A4),
                   child: Text(
-                    conversation['name']
-                        .toString()
-                        .substring(0, 2)
-                        .toUpperCase(),
+                    initials,
                     style: const TextStyle(
                       fontSize: 13,
                       color: Colors.white,
@@ -237,27 +216,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     ),
                   ),
                 ),
-                if (conversation['isOnline'])
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1D9E75),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(0xFFF5F2EC),
-                          width: 1.5,
-                        ),
-                      ),
-                    ),
-                  ),
               ],
             ),
             const SizedBox(width: 12),
-            // info conversatie
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -266,7 +227,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        conversation['name'],
+                        otherName,
                         style: TextStyle(
                           fontSize: 14,
                           color: const Color(0xFF3D3530),
@@ -276,7 +237,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
                         ),
                       ),
                       Text(
-                        conversation['time'],
+                        conversation['last_message_time'] != null
+                            ? _formatTime(
+                                conversation['last_message_time'])
+                            : '',
                         style: TextStyle(
                           fontSize: 10,
                           color: hasUnread
@@ -292,7 +256,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          conversation['lastMessage'],
+                          conversation['last_message'] ?? 'Niciun mesaj',
                           style: TextStyle(
                             fontSize: 12,
                             color: hasUnread
@@ -317,7 +281,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                           ),
                           child: Center(
                             child: Text(
-                              '${conversation['unread']}',
+                              '$unread',
                               style: const TextStyle(
                                 fontSize: 10,
                                 color: Color(0xFFF5F2EC),
@@ -336,15 +300,34 @@ class _MessagesScreenState extends State<MessagesScreen> {
       ),
     );
   }
+
+  String _formatTime(String timestamp) {
+    try {
+      final date = DateTime.parse(timestamp);
+      final now = DateTime.now();
+      final diff = now.difference(date);
+
+      if (diff.inMinutes < 60) return '${diff.inMinutes}m';
+      if (diff.inHours < 24) return '${diff.inHours}h';
+      if (diff.inDays < 7) return '${diff.inDays}z';
+      return '${date.day}.${date.month}';
+    } catch (e) {
+      return '';
+    }
+  }
 }
 
 
 class ConversationScreen extends StatefulWidget {
   final Map<String, dynamic> conversation;
+  final Map<String, dynamic> currentUser;
+  final String otherName;
 
   const ConversationScreen({
     super.key,
     required this.conversation,
+    required this.currentUser,
+    required this.otherName,
   });
 
   @override
@@ -354,52 +337,31 @@ class ConversationScreen extends StatefulWidget {
 class _ConversationScreenState extends State<ConversationScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-
-  final List<Map<String, dynamic>> _messages = [
-    {
-      'role': 'them',
-      'text': 'Bună ziua! Cum vă pot ajuta?',
-      'time': '10:20',
-    },
-    {
-      'role': 'me',
-      'text': 'Bună! Sunt interesată de o sesiune foto în stilul dreamy, outdoor, undeva în iulie',
-      'time': '10:22',
-    },
-    {
-      'role': 'them',
-      'text': 'Cu plăcere! Am disponibilitate în 15, 16, 18 și 19 iulie. Puteți verifica și calendarul meu pe profil 😊',
-      'time': '10:24',
-    },
-    {
-      'role': 'me',
-      'text': '19 iulie ar fi ideal! Cât durează o sesiune?',
-      'time': '10:25',
-    },
-    {
-      'role': 'them',
-      'text': 'De obicei 2-3 ore, include și editarea fotografiilor. Vă trimit detalii despre prețuri pe email.',
-      'time': '10:26',
-    },
-  ];
+  List<Map<String, dynamic>> _messages = [];
+  bool _isLoading = true;
 
   @override
-  void dispose() {
-    _messageController.dispose();
-    _scrollController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _loadMessages();
+    MessageService.joinConversation(widget.conversation['id']);
+    MessageService.onReceiveMessage((message) {
+      setState(() => _messages.add(message));
+      _scrollToBottom();
+    });
   }
 
-  void _sendMessage() {
-    if (_messageController.text.trim().isEmpty) return;
+  Future<void> _loadMessages() async {
+    final messages =
+        await MessageService.getMessages(widget.conversation['id']);
     setState(() {
-      _messages.add({
-        'role': 'me',
-        'text': _messageController.text.trim(),
-        'time': _getCurrentTime(),
-      });
-      _messageController.clear();
+      _messages = messages;
+      _isLoading = false;
     });
+    _scrollToBottom();
+  }
+
+  void _scrollToBottom() {
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -411,9 +373,37 @@ class _ConversationScreenState extends State<ConversationScreen> {
     });
   }
 
-  String _getCurrentTime() {
-    final now = DateTime.now();
-    return '${now.hour}:${now.minute.toString().padLeft(2, '0')}';
+  void _sendMessage() {
+    if (_messageController.text.trim().isEmpty) return;
+
+    final text = _messageController.text.trim();
+    final senderId = widget.currentUser['id'];
+    
+    print('Trimit mesaj: $text, sender: $senderId, conv: ${widget.conversation['id']}');
+
+    MessageService.sendMessage(
+      conversationId: widget.conversation['id'],
+      senderId: senderId,
+      text: text,
+    );
+
+    setState(() {
+      _messages.add({
+        'sender_id': senderId,
+        'text': text,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+    });
+
+    _messageController.clear();
+    _scrollToBottom();
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -424,9 +414,14 @@ class _ConversationScreenState extends State<ConversationScreen> {
         child: Column(
           children: [
             _buildHeader(),
-            _buildContextCard(),
             Expanded(
-              child: _buildMessages(),
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF8C7B6B),
+                      ),
+                    )
+                  : _buildMessages(),
             ),
             _buildInputArea(),
           ],
@@ -436,36 +431,31 @@ class _ConversationScreenState extends State<ConversationScreen> {
   }
 
   Widget _buildHeader() {
+    final initials = widget.otherName.length >= 2
+        ? widget.otherName.substring(0, 2).toUpperCase()
+        : widget.otherName.toUpperCase();
+
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 16, 10),
       decoration: const BoxDecoration(
         color: Color(0xFFFAF8F5),
         border: Border(
-          bottom: BorderSide(
-            color: Color(0xFFE8E3DA),
-            width: 0.5,
-          ),
+          bottom: BorderSide(color: Color(0xFFE8E3DA), width: 0.5),
         ),
       ),
       child: Row(
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: const Icon(
-              Icons.arrow_back_ios,
-              size: 18,
-              color: Color(0xFF8C7B6B),
-            ),
+            child: const Icon(Icons.arrow_back_ios,
+                size: 18, color: Color(0xFF8C7B6B)),
           ),
           const SizedBox(width: 8),
           CircleAvatar(
             radius: 18,
-            backgroundColor: Color(widget.conversation['color']),
+            backgroundColor: const Color(0xFFC4B4A4),
             child: Text(
-              widget.conversation['name']
-                  .toString()
-                  .substring(0, 2)
-                  .toUpperCase(),
+              initials,
               style: const TextStyle(
                 fontSize: 10,
                 color: Colors.white,
@@ -475,92 +465,32 @@ class _ConversationScreenState extends State<ConversationScreen> {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.conversation['name'],
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF3D3530),
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                if (widget.conversation['isOnline'])
-                  const Text(
-                    'online acum',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Color(0xFF1D9E75),
-                    ),
-                  ),
-              ],
+            child: Text(
+              widget.otherName,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF3D3530),
+                fontWeight: FontWeight.w400,
+              ),
             ),
           ),
-          const Icon(
-            Icons.calendar_today_outlined,
-            size: 18,
-            color: Color(0xFFC4B9A8),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildContextCard() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEDEAE4),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: Color(widget.conversation['color']),
-              borderRadius: BorderRadius.circular(6),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Sesiune foto · ${widget.conversation['name']}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF3D3530),
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                const Text(
-                  'Dreamy · outdoor · iulie 2025',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Color(0xFF8C7B6B),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Text(
-            'Vezi →',
-            style: TextStyle(
-              fontSize: 10,
-              color: Color(0xFFC4B9A8),
-            ),
-          ),
+          const Icon(Icons.calendar_today_outlined,
+              size: 18, color: Color(0xFFC4B9A8)),
         ],
       ),
     );
   }
 
   Widget _buildMessages() {
+    if (_messages.isEmpty) {
+      return const Center(
+        child: Text(
+          'Niciun mesaj încă. Spune Bună! 👋',
+          style: TextStyle(fontSize: 13, color: Color(0xFFC4B9A8)),
+        ),
+      );
+    }
+
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
@@ -572,7 +502,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
   }
 
   Widget _buildMessageBubble(Map<String, dynamic> message) {
-    final isMe = message['role'] == 'me';
+    final isMe = message['sender_id'] == widget.currentUser['id'];
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -583,30 +514,23 @@ class _ConversationScreenState extends State<ConversationScreen> {
           if (!isMe) ...[
             CircleAvatar(
               radius: 14,
-              backgroundColor: Color(widget.conversation['color']),
+              backgroundColor: const Color(0xFFC4B4A4),
               child: Text(
-                widget.conversation['name']
-                    .toString()
-                    .substring(0, 1)
-                    .toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 9,
-                  color: Colors.white,
-                ),
+                widget.otherName.substring(0, 1).toUpperCase(),
+                style: const TextStyle(fontSize: 9, color: Colors.white),
               ),
             ),
             const SizedBox(width: 6),
           ],
           Flexible(
             child: Column(
-              crossAxisAlignment:
-                  isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: isMe
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 9,
-                  ),
+                      horizontal: 12, vertical: 9),
                   decoration: BoxDecoration(
                     color: isMe
                         ? const Color(0xFF3D3530)
@@ -632,11 +556,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  message['time'],
+                  _formatTime(message['created_at']),
                   style: const TextStyle(
-                    fontSize: 9,
-                    color: Color(0xFFC4B9A8),
-                  ),
+                      fontSize: 9, color: Color(0xFFC4B9A8)),
                 ),
               ],
             ),
@@ -646,39 +568,38 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
+  String _formatTime(String timestamp) {
+    try {
+      final date = DateTime.parse(timestamp);
+      return '${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return '';
+    }
+  }
+
   Widget _buildInputArea() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
       decoration: const BoxDecoration(
         color: Color(0xFFFAF8F5),
         border: Border(
-          top: BorderSide(
-            color: Color(0xFFE8E3DA),
-            width: 0.5,
-          ),
+          top: BorderSide(color: Color(0xFFE8E3DA), width: 0.5),
         ),
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.attach_file_outlined,
-            size: 20,
-            color: Color(0xFFC4B9A8),
-          ),
+          const Icon(Icons.attach_file_outlined,
+              size: 20, color: Color(0xFFC4B9A8)),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
               controller: _messageController,
               style: const TextStyle(
-                fontSize: 13,
-                color: Color(0xFF3D3530),
-              ),
+                  fontSize: 13, color: Color(0xFF3D3530)),
               decoration: InputDecoration(
                 hintText: 'Scrie un mesaj...',
                 hintStyle: const TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFFC4B9A8),
-                ),
+                    fontSize: 13, color: Color(0xFFC4B9A8)),
                 filled: true,
                 fillColor: const Color(0xFFEDEAE4),
                 border: OutlineInputBorder(
@@ -686,9 +607,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
                   borderSide: BorderSide.none,
                 ),
                 contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
+                    horizontal: 16, vertical: 10),
               ),
               onSubmitted: (_) => _sendMessage(),
               maxLines: null,
@@ -704,11 +623,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 color: const Color(0xFF3D3530),
                 borderRadius: BorderRadius.circular(19),
               ),
-              child: const Icon(
-                Icons.arrow_upward,
-                color: Color(0xFFF5F2EC),
-                size: 18,
-              ),
+              child: const Icon(Icons.arrow_upward,
+                  color: Color(0xFFF5F2EC), size: 18),
             ),
           ),
         ],
