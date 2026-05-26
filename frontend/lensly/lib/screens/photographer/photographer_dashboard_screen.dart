@@ -4,6 +4,8 @@ import 'my_photos_screen.dart';
 import 'calendar_edit_screen.dart';
 import 'package:lensly/screens/auth/login_screen.dart';
 import 'package:lensly/screens/photographer/edit_profile_screen.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class PhotographerDashboardScreen extends StatefulWidget {
   const PhotographerDashboardScreen({super.key});
@@ -16,6 +18,11 @@ class PhotographerDashboardScreen extends StatefulWidget {
 class _PhotographerDashboardScreenState
     extends State<PhotographerDashboardScreen> {
   Map<String, dynamic>? _user;
+  Map<String, dynamic> _stats = {
+    'photos': 0,
+    'conversations': 0,
+    'saved': 0,
+  };
 
   final List<Map<String, dynamic>> _recentActivity = [
     {
@@ -61,6 +68,28 @@ class _PhotographerDashboardScreenState
   Future<void> _loadUser() async {
     final user = await AuthService.getUser();
     setState(() => _user = user);
+    
+    if (user != null) {
+      await _loadStats(user['id']);
+    }
+  }
+
+  Future<void> _loadStats(int userId) async {
+    try {
+      final token = await AuthService.getToken();
+      final response = await http.get(
+        Uri.parse('http://10.0.2.2:3000/api/users/$userId/stats'),
+        headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() => _stats = data);
+      }
+    } catch (e) {
+      print('Eroare stats: $e');
+    }
   }
 
   @override
@@ -227,11 +256,11 @@ class _PhotographerDashboardScreenState
           const SizedBox(height: 16),
           Row(
             children: [
-              _buildDarkStat('248', 'Lucrări'),
+              _buildDarkStat('${_stats['photos']}', 'Lucrări'),
               _buildDarkStatDivider(),
-              _buildDarkStat('3', 'Mesaje'),
+              _buildDarkStat('${_stats['conversations']}', 'Mesaje'),
               _buildDarkStatDivider(),
-              _buildDarkStat('12', 'Favorite'),
+              _buildDarkStat('${_stats['saved']}', 'Favorite'),
             ],
           ),
         ],
@@ -354,9 +383,10 @@ class _PhotographerDashboardScreenState
           child: GestureDetector(
             onTap: () async {
               if (action['label'] == 'Adaugă foto') {
-                Navigator.push(context, MaterialPageRoute(
+                await Navigator.push(context, MaterialPageRoute(
                   builder: (_) => const MyPhotosScreen(),
                 ));
+                await _loadUser();
               } else if (action['label'] == 'Calendar') {
                 Navigator.push(context, MaterialPageRoute(
                   builder: (_) => const CalendarEditScreen(),

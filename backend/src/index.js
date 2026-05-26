@@ -38,6 +38,9 @@ app.use('/api/messages', messagesRoutes);
 const usersRoutes = require('./routes/users');
 app.use('/api/users', usersRoutes);
 
+const savedRoutes = require('./routes/saved');
+app.use('/api/saved', savedRoutes);
+
 io.on('connection', (socket) => {
   console.log('User conectat:', socket.id);
 

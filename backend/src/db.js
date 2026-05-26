@@ -23,9 +23,15 @@ const CLOUDINARY_CLOUD_NAME = 'Ana Oniga';
 const CLOUDINARY_API_KEY = '178427792657746';
 const CLOUDINARY_API_SECRET = 'Zyn2hjkUfZ8-BwamBB-ekAOMcf8';
 
-module.exports.CLOUDINARY_CLOUD_NAME = CLOUDINARY_CLOUD_NAME;
-module.exports.CLOUDINARY_API_KEY = CLOUDINARY_API_KEY;
-module.exports.CLOUDINARY_API_SECRET = CLOUDINARY_API_SECRET;
+const EMAIL_USER = 'noreply.lensly@gmail.com';
+const EMAIL_PASS = 'wcrg hmmn pfqw rkxa';
+
 
 module.exports = pool;
 module.exports.GEMINI_API_KEY = GEMINI_API_KEY;
+
+module.exports.CLOUDINARY_CLOUD_NAME = CLOUDINARY_CLOUD_NAME;
+module.exports.CLOUDINARY_API_KEY = CLOUDINARY_API_KEY;
+module.exports.CLOUDINARY_API_SECRET = CLOUDINARY_API_SECRET;
+module.exports.EMAIL_USER = EMAIL_USER;
+module.exports.EMAIL_PASS = EMAIL_PASS;

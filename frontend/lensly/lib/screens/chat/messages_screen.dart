@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lensly/services/message_service.dart';
 import 'package:lensly/services/auth_service.dart';
+import 'package:http/http.dart' as http;
 
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
@@ -180,7 +181,15 @@ class _MessagesScreenState extends State<MessagesScreen> {
         : otherName.toUpperCase();
 
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
+        final token = await AuthService.getToken();
+        if (token != null) {
+          await http.put(
+            Uri.parse('http://10.0.2.2:3000/api/messages/read/${conversation['id']}/${_currentUser!['id']}'),
+            headers: {'Authorization': 'Bearer $token'},
+          );
+        }
+        
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -190,7 +199,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
               otherName: otherName,
             ),
           ),
-        );
+        ).then((_) => _loadData()); 
       },
       child: Container(
         padding:

@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../home/home_screen.dart';
+import 'package:lensly/screens/auth/verify_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -193,7 +194,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 _buildLabel('NUME COMPLET'),
                 const SizedBox(height: 8),
-                _buildTextField(_nameController, 'Ana Ionescu'),
+                _buildTextField(_nameController, 'ex: Ana Ionescu'),
 
                 const SizedBox(height: 18),
 
@@ -300,13 +301,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           );
 
                           if (result['success']) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Cont creat! Intră în cont.'),
-                                backgroundColor: Color(0xFF1D9E75),
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => VerifyScreen(
+                                  pendingId: result['pendingId'],
+                                  email: result['email'],
+                                ),
                               ),
                             );
-                            Navigator.pop(context);
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(

@@ -374,9 +374,9 @@ Widget _buildSuggestedPhotographers() {
             children: [
               CircleAvatar(
                 radius: 22,
-                backgroundColor: Color(photographer['color']),
+                backgroundColor: const Color(0xFF9C8C7C),
                 child: Text(
-                  photographer['name']
+                  (photographer['photographer_name'] ?? photographer['name'] ?? 'NA')
                       .toString()
                       .substring(0, 2)
                       .toUpperCase(),
@@ -389,7 +389,9 @@ Widget _buildSuggestedPhotographers() {
               ),
               const SizedBox(height: 3),
               Text(
-                photographer['name'].toString().split(' ')[0],
+                (photographer['photographer_name'] ?? photographer['name'] ?? '')
+                    .toString()
+                    .split(' ')[0],
                 style: const TextStyle(
                   fontSize: 9,
                   color: Color(0xFF3D3530),
@@ -398,7 +400,7 @@ Widget _buildSuggestedPhotographers() {
                 maxLines: 1,
               ),
               Text(
-                photographer['city'],
+                photographer['city'] ?? '',
                 style: const TextStyle(
                   fontSize: 8,
                   color: Color(0xFFC4B9A8),

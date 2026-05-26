@@ -9,6 +9,9 @@ import 'package:lensly/screens/chat/messages_screen.dart';
 import 'package:lensly/services/photo_service.dart';
 import 'package:lensly/services/message_service.dart';
 import 'package:lensly/services/auth_service.dart';
+import 'package:lensly/services/saved_service.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class HomeScreen extends StatefulWidget {
   final bool isPhotographer;  
@@ -26,11 +29,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<Map<String, dynamic>> _photos = [];
   bool _isLoading = true;
+  int _unreadCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadPhotos();
+    _loadUnreadCount();
   }
 
   Future<void> _loadPhotos() async {
@@ -43,6 +48,28 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   } catch (e) {
     setState(() => _isLoading = false);
+  }
+}
+
+Future<void> _loadUnreadCount() async {
+  final user = await AuthService.getUser();
+  if (user == null) return;
+  
+  final token = await AuthService.getToken();
+  final response = await http.get(
+    Uri.parse('http://10.0.2.2:3000/api/messages/conversations/${user['id']}'),
+    headers: {
+      if (token != null) 'Authorization': 'Bearer $token',
+    },
+  );
+  
+  if (response.statusCode == 200) {
+    final List data = jsonDecode(response.body);
+    int total = 0;
+    for (final conv in data) {
+      total += int.tryParse(conv['unread_count']?.toString() ?? '0') ?? 0;
+    }
+    if (mounted) setState(() => _unreadCount = total);
   }
 }
 
@@ -388,23 +415,16 @@ Widget _buildPhotoDetailSheet(Map<String, dynamic> photo) {
                     ),
                   ),
                 ),
-                Positioned(
-                  top: 16,
-                  right: 16,
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.bookmark_border,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                  ),
+              Positioned(
+                top: 16,
+                right: 16,
+                child: _BookmarkButton(
+                  photoId: photo['id'],
+                  onSave: (userId, photoId) {
+                    _showSaveFolderDialog(userId, photoId, () {});
+                  },
                 ),
+              ),
               ],
             ),
           ),
@@ -596,18 +616,8 @@ Widget _buildPhotoDetailSheet(Map<String, dynamic> photo) {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEDEAE4),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.bookmark_border,
-                      color: Color(0xFF8C7B6B),
-                      size: 18,
-                    ),
+                  _PhotographerBookmarkButton(
+                    photographerId: photo['photographer_id'] ?? 0,
                   ),
                 ],
               ),
@@ -670,7 +680,7 @@ Widget _buildBottomNav() {
           children: List.generate(items.length, (index) {
             final isActive = index == _currentIndex;
             return GestureDetector(
-              onTap: () {
+              onTap: () async {
                 if (widget.isPhotographer) {
                   if (index == 1) {
                     Navigator.push(
@@ -678,10 +688,11 @@ Widget _buildBottomNav() {
                       MaterialPageRoute(builder: (_) => const MyPhotosScreen(),
                       ));
                   } else if (index == 2) {
-                    Navigator.push(
+                    await Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const MessagesScreen(),
-                      ));
+                      MaterialPageRoute(builder: (_) => const MessagesScreen()),
+                    );
+                    await _loadUnreadCount();
                   } else if (index == 3) {
                     Navigator.push(
                       context,
@@ -707,10 +718,11 @@ Widget _buildBottomNav() {
                     MaterialPageRoute(builder: (_) => const AiChatScreen()),
                   );
                 } else if (index == 3) {
-                  Navigator.push(
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const MessagesScreen()),
-                  );            
+                  );     
+                  await _loadUnreadCount();       
                 } else {
                   setState(() => _currentIndex = index);
                 }
@@ -720,13 +732,26 @@ Widget _buildBottomNav() {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    items[index]['icon'] as IconData,
-                    size: 22,
-                    color: isActive
-                        ? const Color(0xFF3D3530)
-                        : const Color(0xFFC4B9A8),
-                  ),
+                  index == (widget.isPhotographer ? 2 : 3)
+                      ? Badge(
+                          isLabelVisible: _unreadCount > 0,
+                          label: Text('$_unreadCount'),
+                          backgroundColor: const Color(0xFFE24B4A),
+                          child: Icon(
+                            items[index]['icon'] as IconData,
+                            size: 22,
+                            color: isActive
+                                ? const Color(0xFF3D3530)
+                                : const Color(0xFFC4B9A8),
+                          ),
+                        )
+                      : Icon(
+                          items[index]['icon'] as IconData,
+                          size: 22,
+                          color: isActive
+                              ? const Color(0xFF3D3530)
+                              : const Color(0xFFC4B9A8),
+                        ),
                   const SizedBox(height: 2),
                   Text(
                     items[index]['label'] as String,
@@ -760,7 +785,251 @@ Widget _buildBottomNav() {
     ),
   );
 }
+void _showSaveFolderDialog(int userId, int photoId, VoidCallback onSaved) {
+  final folders = ['General', 'Wedding', 'Dreamy', 'Couple', 'Portrait', 'Editorial'];
+  
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFFFAF8F5),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (_) => Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 32,
+              height: 3,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8E3DA),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'SALVEAZĂ ÎN',
+            style: TextStyle(
+              fontSize: 9,
+              letterSpacing: 1.5,
+              color: Color(0xFFC4B9A8),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: folders.map((folder) => GestureDetector(
+              onTap: () async {
+                Navigator.pop(context);
+                await SavedService.savePhoto(
+                  userId: userId,
+                  photoId: photoId,
+                  folder: folder,
+                );
+                onSaved();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Salvat în $folder!'),
+                    backgroundColor: const Color(0xFF1D9E75),
+                  ),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEDEAE4),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  folder,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF3D3530),
+                  ),
+                ),
+              ),
+            )).toList(),
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    ),
+  );
+}
 
+}
+class _BookmarkButton extends StatefulWidget {
+  final int photoId;
+  final Function(int userId, int photoId) onSave;
+
+  const _BookmarkButton({
+    required this.photoId,
+    required this.onSave,
+  });
+
+  @override
+  State<_BookmarkButton> createState() => _BookmarkButtonState();
+}
+
+class _BookmarkButtonState extends State<_BookmarkButton> {
+  bool _isSaved = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSaved();
+  }
+
+  Future<void> _checkSaved() async {
+    final user = await AuthService.getUser();
+    if (user == null) return;
+    final saved = await SavedService.isSaved(
+      userId: user['id'],
+      photoId: widget.photoId,
+    );
+    if (mounted) setState(() => _isSaved = saved);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () async {
+        final user = await AuthService.getUser();
+        if (user == null) return;
+
+        if (_isSaved) {
+          await SavedService.unsavePhoto(
+            userId: user['id'],
+            photoId: widget.photoId,
+          );
+          setState(() => _isSaved = false);
+        } else {
+          widget.onSave(user['id'], widget.photoId);
+          setState(() => _isSaved = true);
+        }
+      },
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.4),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          _isSaved ? Icons.bookmark : Icons.bookmark_border,
+          color: _isSaved
+              ? const Color(0xFFC9A96E)
+              : Colors.white,
+          size: 16,
+        ),
+      ),
+    );
+  }
+}
+
+class _PhotographerBookmarkButton extends StatefulWidget {
+  final int photographerId;
+
+  const _PhotographerBookmarkButton({
+    required this.photographerId,
+  });
+
+  @override
+  State<_PhotographerBookmarkButton> createState() =>
+      _PhotographerBookmarkButtonState();
+}
+
+class _PhotographerBookmarkButtonState
+    extends State<_PhotographerBookmarkButton> {
+  bool _isSaved = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSaved();
+  }
+
+  Future<void> _checkSaved() async {
+    final user = await AuthService.getUser();
+    if (user == null) return;
+    final token = await AuthService.getToken();
+    final response = await http.get(
+      Uri.parse(
+          'http://10.0.2.2:3000/api/saved/photographers/${user['id']}'),
+      headers: {
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      final saved = data.any(
+          (p) => p['photographer_id'] == widget.photographerId);
+      if (mounted) setState(() => _isSaved = saved);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () async {
+        final user = await AuthService.getUser();
+        if (user == null) return;
+        final token = await AuthService.getToken();
+
+        if (_isSaved) {
+          await http.delete(
+            Uri.parse(
+                'http://10.0.2.2:3000/api/saved/photographer/${user['id']}/${widget.photographerId}'),
+            headers: {
+              if (token != null) 'Authorization': 'Bearer $token',
+            },
+          );
+          setState(() => _isSaved = false);
+        } else {
+          final response = await http.post(
+            Uri.parse('http://10.0.2.2:3000/api/saved/photographer'),
+            headers: {
+              'Content-Type': 'application/json',
+              if (token != null) 'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({
+              'user_id': user['id'],
+              'photographer_id': widget.photographerId,
+            }),
+          );
+          if (response.statusCode == 201 ||
+              response.statusCode == 400) {
+            setState(() => _isSaved = true);
+          }
+        }
+      },
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: _isSaved
+              ? const Color(0xFF3D3530)
+              : const Color(0xFFEDEAE4),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          _isSaved ? Icons.bookmark : Icons.bookmark_border,
+          color: _isSaved
+              ? const Color(0xFFC9A96E)
+              : const Color(0xFF8C7B6B),
+          size: 18,
+        ),
+      ),
+    );
+  }
 }
   
 

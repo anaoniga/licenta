@@ -26,9 +26,11 @@ class AuthService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 201) {
-        await _saveToken(data['token']);
-        await _saveUser(data['user']);
-        return {'success': true, 'user': data['user']};
+        return {
+          'success': true,
+          'pendingId': data['pendingId'],
+          'email': data['email'],
+        };
       } else {
         return {'success': false, 'error': data['error']};
       }

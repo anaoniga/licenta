@@ -44,7 +44,7 @@ router.post('/', async (req, res) => {
     const result = await pool.query(
       `INSERT INTO calendar_events 
         (photographer_id, date, type, title, is_public)
-       VALUES ($1, $2, $3, $4, $5)
+       VALUES ($1, $2::date, $3, $4, $5)
        RETURNING *`,
       [photographer_id, date, type, title || null, is_public || false]
     );

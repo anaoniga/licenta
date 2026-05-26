@@ -38,4 +38,35 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+router.get('/:id/stats', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const photosResult = await pool.query(
+      'SELECT COUNT(*) as count FROM photos WHERE photographer_id = $1',
+      [id]
+    );
+
+    const conversationsResult = await pool.query(
+      'SELECT COUNT(*) as count FROM conversations WHERE photographer_id = $1',
+      [id]
+    );
+
+    const savedResult = await pool.query(
+      'SELECT COUNT(*) as count FROM saved_photographers WHERE photographer_id = $1',
+      [id]
+    );
+
+    res.json({
+      photos: parseInt(photosResult.rows[0].count),
+      conversations: parseInt(conversationsResult.rows[0].count),
+      saved: parseInt(savedResult.rows[0].count),
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Eroare server' });
+  }
+});
+
 module.exports = router;

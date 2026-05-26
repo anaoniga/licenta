@@ -31,6 +31,15 @@ class _PhotographerProfileScreenState
   int _currentYear = DateTime.now().year;
   List<String> _specializations = [];
   List<Map<String, dynamic>> _portfolioPhotos = [];
+  String _contactPhone = '';
+  String _contactInstagram = '';
+  String _bio = '';
+
+  Map<String, dynamic> _stats = {
+    'photos': 0,
+    'conversations': 0,
+    'saved': 0,
+  };
 
   final List<String> _monthNames = [
     '', 'Ianuarie', 'Februarie', 'Martie', 'Aprilie',
@@ -49,6 +58,30 @@ class _PhotographerProfileScreenState
     super.initState();
     _selectedTab = widget.initialTab;
     _loadCalendar();
+    _checkIfSaved();
+  }
+
+  Future<void> _checkIfSaved() async {
+    final user = await AuthService.getUser();
+    if (user == null) return;
+
+    final photographerId = widget.photographer['photographer_id']
+        ?? widget.photographer['id'];
+    if (photographerId == null) return;
+
+    final token = await AuthService.getToken();
+    final response = await http.get(
+      Uri.parse('http://10.0.2.2:3000/api/saved/photographers/${user['id']}'),
+      headers: {
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      final saved = data.any((p) => p['photographer_id'] == photographerId);
+      if (mounted) setState(() => _isSaved = saved);
+    }
   }
 
   Future<void> _loadCalendar() async {
@@ -56,8 +89,6 @@ class _PhotographerProfileScreenState
 
     final photographerId = widget.photographer['photographer_id']
         ?? widget.photographer['id'];
-
-    
 
     if (photographerId == null) {
       setState(() => _calendarLoading = false);
@@ -73,7 +104,7 @@ class _PhotographerProfileScreenState
     setState(() {
       _calendarEvents = {};
       for (final event in events) {
-        final date = DateTime.parse(event['date']);
+        final date = DateTime.parse(event['date']).toLocal();
         _calendarEvents[date.day] = event['type'];
       }
       _calendarLoading = false;
@@ -88,6 +119,7 @@ class _PhotographerProfileScreenState
           if (token != null) 'Authorization': 'Bearer $token',
         },
       );
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final specs = data['specializations'];
@@ -96,6 +128,21 @@ class _PhotographerProfileScreenState
             _specializations = List<String>.from(specs);
           });
         }
+        final statsResponse = await http.get(
+          Uri.parse('http://10.0.2.2:3000/api/users/$photographerId/stats'),
+          headers: {
+            if (token != null) 'Authorization': 'Bearer $token',
+          },
+        );
+        if (statsResponse.statusCode == 200) {
+          final statsData = jsonDecode(statsResponse.body);
+          setState(() => _stats = statsData);
+        }
+        setState(() {
+          _contactPhone = data['contact_phone'] ?? '';
+          _contactInstagram = data['contact_instagram'] ?? '';
+          _bio = data['bio'] ?? '';
+        });
       }
 
       final photosResponse = await http.get(
@@ -104,6 +151,7 @@ class _PhotographerProfileScreenState
           if (token != null) 'Authorization': 'Bearer $token',
         },
       );
+
       if (photosResponse.statusCode == 200) {
         final photosData = jsonDecode(photosResponse.body);
         setState(() {
@@ -146,7 +194,7 @@ class _PhotographerProfileScreenState
         ?? 'NA';
 
     return Container(
-      height: 100,
+      height: 120,
       color: const Color(0xFF9C8C7C),
       child: Stack(
         children: [
@@ -174,7 +222,41 @@ class _PhotographerProfileScreenState
             top: 12,
             right: 12,
             child: GestureDetector(
-              onTap: () => setState(() => _isSaved = !_isSaved),
+              onTap: () async {
+                final user = await AuthService.getUser();
+                if (user == null) return;
+
+                final photographerId = widget.photographer['photographer_id']
+                    ?? widget.photographer['id'];
+                if (photographerId == null) return;
+
+                final token = await AuthService.getToken();
+
+                if (_isSaved) {
+                  await http.delete(
+                    Uri.parse('http://10.0.2.2:3000/api/saved/photographer/${user['id']}/$photographerId'),
+                    headers: {
+                      if (token != null) 'Authorization': 'Bearer $token',
+                    },
+                  );
+                  setState(() => _isSaved = false);
+                } else {
+                  final response = await http.post(
+                    Uri.parse('http://10.0.2.2:3000/api/saved/photographer'),
+                    headers: {
+                      'Content-Type': 'application/json',
+                      if (token != null) 'Authorization': 'Bearer $token',
+                    },
+                    body: jsonEncode({
+                      'user_id': user['id'],
+                      'photographer_id': photographerId,
+                    }),
+                  );
+                  if (response.statusCode == 201) {
+                    setState(() => _isSaved = true);
+                  }
+                }
+              },
               child: Container(
                 width: 32,
                 height: 32,
@@ -193,7 +275,7 @@ class _PhotographerProfileScreenState
             ),
           ),
           Positioned(
-            bottom: -28,
+            bottom: -20,
             left: 16,
             child: Container(
               width: 56,
@@ -297,13 +379,13 @@ class _PhotographerProfileScreenState
       ),
       child: Row(
         children: [
-          _buildStat('248', 'Lucrări'),
+          _buildStat('${_stats['photos']}', 'Lucrări'),
           _buildStatDivider(),
           _buildStat('4.9', 'Rating'),
           _buildStatDivider(),
           _buildStat('5+', 'Ani exp.'),
           _buildStatDivider(),
-          _buildStat('12', 'Favorite'),
+          _buildStat('${_stats['saved']}', 'Favorite'),
         ],
       ),
     );
@@ -623,38 +705,64 @@ class _PhotographerProfileScreenState
   }
 
   Widget _buildContact() {
-    final name = widget.photographer['photographer_name']
-        ?? widget.photographer['name']
-        ?? '';
     final city = widget.photographer['photographer_city']
         ?? widget.photographer['city']
         ?? '';
-    final firstName = name.split(' ').first.toLowerCase();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Column(
         children: [
-          _buildContactItem(
-            Icons.phone_outlined,
-            'Telefon',
-            '07xx xxx xxx',
-          ),
-          _buildContactItem(
-            Icons.camera_alt_outlined,
-            'Instagram',
-            '@$firstName.foto',
-          ),
-          _buildContactItem(
-            Icons.email_outlined,
-            'Email',
-            '$firstName@foto.ro',
-          ),
-          _buildContactItem(
-            Icons.location_on_outlined,
-            'Locație',
-            city,
-          ),
+          if (_bio.isNotEmpty)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEDEAE4),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                _bio,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF3D3530),
+                  height: 1.5,
+                ),
+              ),
+            ),
+          if (_contactPhone.isNotEmpty)
+            _buildContactItem(
+              Icons.phone_outlined,
+              'Telefon',
+              _contactPhone,
+            ),
+          if (_contactInstagram.isNotEmpty)
+            _buildContactItem(
+              Icons.camera_alt_outlined,
+              'Instagram',
+              _contactInstagram,
+            ),
+          if (city.isNotEmpty)
+            _buildContactItem(
+              Icons.location_on_outlined,
+              'Locație',
+              city,
+            ),
+          if (_contactPhone.isEmpty && _contactInstagram.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Text(
+                  'Fotograful nu a adăugat date de contact încă',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFFC4B9A8),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
         ],
       ),
     );

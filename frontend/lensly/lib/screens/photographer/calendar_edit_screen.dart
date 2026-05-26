@@ -54,7 +54,7 @@ class _CalendarEditScreenState extends State<CalendarEditScreen> {
     setState(() {
       _events = {};
       for (final event in events) {
-        final date = DateTime.parse(event['date']);
+        final date = DateTime.parse(event['date']).toLocal();
         final key = '${date.year}-${date.month}-${date.day}';
         _events[key] = event;
       }
@@ -435,7 +435,7 @@ class _CalendarEditScreenState extends State<CalendarEditScreen> {
                     if (_photographerId == null) return;
 
                     final dateStr =
-                        '$_currentYear-${_currentMonth.toString().padLeft(2, '0')}-${_selectedDay.toString().padLeft(2, '0')}';
+                        '$_currentYear-${_currentMonth.toString().padLeft(2, '0')}-${_selectedDay.toString().padLeft(2, '0')}T12:00:00';
 
                     final success = await CalendarService.addEvent(
                       photographerId: _photographerId!,

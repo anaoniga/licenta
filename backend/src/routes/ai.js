@@ -17,7 +17,7 @@ router.post('/chat', async (req, res) => {
     const { message } = req.body;
 
     const photosResult = await pool.query(`
-      SELECT DISTINCT
+      SELECT DISTINCT ON (u.id)
         u.id as photographer_id,
         u.name as photographer_name,
         u.city,
@@ -25,7 +25,7 @@ router.post('/chat', async (req, res) => {
       FROM photos p
       JOIN users u ON p.photographer_id = u.id
       WHERE u.role = 'photographer'
-      ORDER BY u.name
+      ORDER BY u.id
     `);
 
     const allPhotographers = photosResult.rows;
@@ -62,9 +62,16 @@ Mesaj utilizator: ${message}`;
 
     const normalizedMessage = removeDiacritics(message);
 
-    const relevantPhotographers = allPhotographers.filter(p => {
+    const seen = new Set();
+    const uniquePhotographers = allPhotographers.filter(p => {
+      if (seen.has(p.photographer_id)) return false;
+      seen.add(p.photographer_id);
+      return true;
+    });
+
+    const relevantPhotographers = uniquePhotographers.filter(p => {
       const normalizedCategory = removeDiacritics(p.category);
-      const normalizedCity = removeDiacritics(p.city);
+      const normalizedCity = removeDiacritics(p.city || '');
       const normalizedName = removeDiacritics(p.photographer_name);
 
       return normalizedMessage.includes(normalizedCategory) ||
@@ -76,7 +83,7 @@ Mesaj utilizator: ${message}`;
 
     const photographers = relevantPhotographers.length > 0
       ? relevantPhotographers.slice(0, 3)
-      : allPhotographers.slice(0, 3);
+      : uniquePhotographers.slice(0, 3);
 
     res.json({
       message: response,
