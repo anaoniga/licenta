@@ -462,7 +462,7 @@ class _SavedScreenState extends State<SavedScreen> {
   Future<List<Map<String, dynamic>>> _loadSavedPhotographers() async {
     final token = await AuthService.getToken();
     final response = await http.get(
-      Uri.parse('http://10.0.2.2:3000/api/saved/photographers/${_currentUser!['id']}'),
+      Uri.parse('http://192.168.1.131:3000/api/saved/photographers/${_currentUser!['id']}'),
       headers: {
         if (token != null) 'Authorization': 'Bearer $token',
       },

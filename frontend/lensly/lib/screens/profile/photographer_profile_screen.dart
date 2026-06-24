@@ -71,7 +71,7 @@ class _PhotographerProfileScreenState
 
     final token = await AuthService.getToken();
     final response = await http.get(
-      Uri.parse('http://10.0.2.2:3000/api/saved/photographers/${user['id']}'),
+      Uri.parse('http://192.168.1.131:3000/api/saved/photographers/${user['id']}'),
       headers: {
         if (token != null) 'Authorization': 'Bearer $token',
       },
@@ -114,7 +114,7 @@ class _PhotographerProfileScreenState
       final token = await AuthService.getToken();
 
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:3000/api/users/$photographerId'),
+        Uri.parse('http://192.168.1.131:3000/api/users/$photographerId'),
         headers: {
           if (token != null) 'Authorization': 'Bearer $token',
         },
@@ -129,7 +129,7 @@ class _PhotographerProfileScreenState
           });
         }
         final statsResponse = await http.get(
-          Uri.parse('http://10.0.2.2:3000/api/users/$photographerId/stats'),
+          Uri.parse('http://192.168.1.131:3000/api/users/$photographerId/stats'),
           headers: {
             if (token != null) 'Authorization': 'Bearer $token',
           },
@@ -146,7 +146,7 @@ class _PhotographerProfileScreenState
       }
 
       final photosResponse = await http.get(
-        Uri.parse('http://10.0.2.2:3000/api/photos/photographer/$photographerId'),
+        Uri.parse('http://192.168.1.131:3000/api/photos/photographer/$photographerId'),
         headers: {
           if (token != null) 'Authorization': 'Bearer $token',
         },
@@ -234,7 +234,7 @@ class _PhotographerProfileScreenState
 
                 if (_isSaved) {
                   await http.delete(
-                    Uri.parse('http://10.0.2.2:3000/api/saved/photographer/${user['id']}/$photographerId'),
+                    Uri.parse('http://192.168.1.131:3000/api/saved/photographer/${user['id']}/$photographerId'),
                     headers: {
                       if (token != null) 'Authorization': 'Bearer $token',
                     },
@@ -242,7 +242,7 @@ class _PhotographerProfileScreenState
                   setState(() => _isSaved = false);
                 } else {
                   final response = await http.post(
-                    Uri.parse('http://10.0.2.2:3000/api/saved/photographer'),
+                    Uri.parse('http://192.168.1.131:3000/api/saved/photographer'),
                     headers: {
                       'Content-Type': 'application/json',
                       if (token != null) 'Authorization': 'Bearer $token',

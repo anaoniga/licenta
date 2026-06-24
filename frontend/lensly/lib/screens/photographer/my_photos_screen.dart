@@ -539,7 +539,7 @@ class _MyPhotosScreenState extends State<MyPhotosScreen> {
                 if (token != null && photo['id'] != null) {
                   await http.delete(
                     Uri.parse(
-                        'http://10.0.2.2:3000/api/photos/${photo['id']}'),
+                        'http://192.168.1.131:3000/api/photos/${photo['id']}'),
                     headers: {'Authorization': 'Bearer $token'},
                   );
                   await _loadPhotos(_currentUser!['id']);

@@ -181,11 +181,53 @@ class _MessagesScreenState extends State<MessagesScreen> {
         : otherName.toUpperCase();
 
     return GestureDetector(
+      onLongPress: () {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            backgroundColor: const Color(0xFFFAF8F5),
+            title: const Text(
+              'Șterge conversația?',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w300,
+                color: Color(0xFF3D3530),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  'Anulează',
+                  style: TextStyle(color: Color(0xFF8C7B6B)),
+                ),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  final token = await AuthService.getToken();
+                  await http.delete(
+                    Uri.parse('http://192.168.1.131:3000/api/messages/delete/${conversation['id']}'),
+                    headers: {
+                      if (token != null) 'Authorization': 'Bearer $token',
+                    },
+                  );
+                  await _loadData();
+                },
+                child: const Text(
+                  'Șterge',
+                  style: TextStyle(color: Color(0xFFE24B4A)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
       onTap: () async {
         final token = await AuthService.getToken();
         if (token != null) {
           await http.put(
-            Uri.parse('http://10.0.2.2:3000/api/messages/read/${conversation['id']}/${_currentUser!['id']}'),
+            Uri.parse('http://192.168.1.131:3000/api/messages/read/${conversation['id']}/${_currentUser!['id']}'),
             headers: {'Authorization': 'Bearer $token'},
           );
         }
@@ -355,6 +397,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
     _loadMessages();
     MessageService.joinConversation(widget.conversation['id']);
     MessageService.onReceiveMessage((message) {
+      if (message['sender_id'] == widget.currentUser['id']) return;
       setState(() => _messages.add(message));
       _scrollToBottom();
     });
@@ -403,6 +446,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
         'created_at': DateTime.now().toIso8601String(),
       });
     });
+
 
     _messageController.clear();
     _scrollToBottom();

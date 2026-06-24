@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
 class PhotoService {
-  static const String baseUrl = 'http://10.0.2.2:3000/api';
+  static const String baseUrl = 'http://192.168.1.131:3000/api';
 
   // ia toate fotografiile pentru wall
   static Future<List<Map<String, dynamic>>> getPhotos({

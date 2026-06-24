@@ -63,7 +63,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
   try {
     final response = await http.post(
-      Uri.parse('http://10.0.2.2:3000/api/ai/chat'),
+      Uri.parse('http://192.168.1.131:3000/api/ai/chat'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'message': userMessage}),
     );

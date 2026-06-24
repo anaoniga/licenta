@@ -7,12 +7,10 @@ const { sendVerificationEmail } = require('./email');
 
 const JWT_SECRET = 'lensly_secret_key_2025';
 
-// REGISTER — salveaza temporar si trimite cod
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
 
-    // verificam daca emailul exista deja in users
     const existingUser = await pool.query(
       'SELECT * FROM users WHERE email = $1',
       [email]
@@ -21,20 +19,16 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Email-ul există deja' });
     }
 
-    // stergem orice inregistrare pending anterioara
     await pool.query(
       'DELETE FROM pending_users WHERE email = $1',
       [email]
     );
 
-    // criptam parola
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // generam cod de verificare
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minute
 
-    // salvam temporar in pending_users
     const result = await pool.query(
       `INSERT INTO pending_users (name, email, password, role, verification_code, verification_expires)
        VALUES ($1, $2, $3, $4, $5, $6)
@@ -42,7 +36,6 @@ router.post('/register', async (req, res) => {
       [name, email, hashedPassword, role || 'client', verificationCode, expiresAt]
     );
 
-    // trimitem emailul
     await sendVerificationEmail(email, verificationCode);
 
     res.status(201).json({
@@ -57,7 +50,6 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// VERIFY — verifica codul si creeaza contul real
 router.post('/verify', async (req, res) => {
   try {
     const { pendingId, code } = req.body;
@@ -73,18 +65,15 @@ router.post('/verify', async (req, res) => {
 
     const pending = result.rows[0];
 
-    // verificam codul
     if (pending.verification_code !== code) {
       return res.status(400).json({ error: 'Cod incorect' });
     }
 
-    // verificam expirarea
     if (new Date() > new Date(pending.verification_expires)) {
       await pool.query('DELETE FROM pending_users WHERE id = $1', [pendingId]);
       return res.status(400).json({ error: 'Codul a expirat. Înregistrează-te din nou.' });
     }
 
-    // cream contul real in users
     const userResult = await pool.query(
       `INSERT INTO users (name, email, password, role, is_verified)
        VALUES ($1, $2, $3, $4, true)
@@ -92,12 +81,10 @@ router.post('/verify', async (req, res) => {
       [pending.name, pending.email, pending.password, pending.role]
     );
 
-    // stergem din pending
     await pool.query('DELETE FROM pending_users WHERE id = $1', [pendingId]);
 
     const user = userResult.rows[0];
 
-    // generam JWT
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
       JWT_SECRET,
@@ -120,7 +107,6 @@ router.post('/verify', async (req, res) => {
   }
 });
 
-// RESEND CODE
 router.post('/resend', async (req, res) => {
   try {
     const { pendingId } = req.body;
@@ -136,7 +122,6 @@ router.post('/resend', async (req, res) => {
 
     const pending = result.rows[0];
 
-    // generam cod nou
     const newCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -155,7 +140,6 @@ router.post('/resend', async (req, res) => {
   }
 });
 
-// LOGIN
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -176,7 +160,6 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Email sau parolă incorectă' });
     }
 
-    // verificam daca emailul e verificat
     if (!user.is_verified) {
       return res.status(401).json({
         error: 'Email-ul nu este verificat.',

@@ -51,7 +51,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:3000/api/auth/verify'),
+        Uri.parse('http://192.168.1.131:3000/api/auth/verify'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'pendingId': widget.pendingId,
@@ -99,7 +99,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:3000/api/auth/resend'),
+        Uri.parse('http://192.168.1.131:3000/api/auth/resend'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'pendingId': widget.pendingId}),
       );

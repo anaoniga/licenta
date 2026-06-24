@@ -78,7 +78,7 @@ class _PhotographerDashboardScreenState
     try {
       final token = await AuthService.getToken();
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:3000/api/users/$userId/stats'),
+        Uri.parse('http://192.168.1.131:3000/api/users/$userId/stats'),
         headers: {
           if (token != null) 'Authorization': 'Bearer $token',
         },

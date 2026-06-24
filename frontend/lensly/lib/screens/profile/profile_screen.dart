@@ -340,9 +340,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           GestureDetector(
             onTap: () => _deleteNote(index),
-            child: const Padding(
-              padding: EdgeInsets.only(left: 8),
-              child: Icon(
+            child: Container(
+              width: 32,
+              height: 32,
+              alignment: Alignment.center,
+              child: const Icon(
                 Icons.close,
                 size: 14,
                 color: Color(0xFFC4B9A8),

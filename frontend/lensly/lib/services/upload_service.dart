@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:lensly/services/auth_service.dart';
 
 class UploadService {
-  static const String baseUrl = 'http://10.0.2.2:3000/api';
+  static const String baseUrl = 'http://192.168.1.131:3000/api';
 
   static Future<Map<String, dynamic>?> uploadPhoto({
     required File imageFile,

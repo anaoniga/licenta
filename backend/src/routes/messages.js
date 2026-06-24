@@ -113,4 +113,16 @@ router.put('/read/:conversationId/:userId', async (req, res) => {
   }
 });
 
+router.delete('/delete/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM messages WHERE conversation_id = $1', [id]);
+    await pool.query('DELETE FROM conversations WHERE id = $1', [id]);
+    res.json({ message: 'Conversație ștearsă' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Eroare server' });
+  }
+});
+
 module.exports = router;
