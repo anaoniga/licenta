@@ -5,7 +5,6 @@ import 'auth_service.dart';
 class PhotoService {
   static const String baseUrl = 'http://192.168.1.131:3000/api';
 
-  // ia toate fotografiile pentru wall
   static Future<List<Map<String, dynamic>>> getPhotos({
     String? category,
     String? search,
@@ -47,7 +46,6 @@ class PhotoService {
     }
   }
 
-  // ia fotografiile unui fotograf
   static Future<List<Map<String, dynamic>>> getPhotographerPhotos(
       int photographerId) async {
     try {

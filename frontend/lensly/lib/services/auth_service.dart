@@ -67,20 +67,17 @@ class AuthService {
     }
   }
 
-  // LOGOUT
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
     await prefs.remove('user');
   }
 
-  // verifica daca userul e logat
   static Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('token') != null;
   }
 
-  // ia datele userului salvat
   static Future<Map<String, dynamic>?> getUser() async {
     final prefs = await SharedPreferences.getInstance();
     final userStr = prefs.getString('user');
@@ -88,13 +85,11 @@ class AuthService {
     return jsonDecode(userStr);
   }
 
-  // ia tokenul
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('token');
   }
 
-  // functii private de salvare
   static Future<void> _saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('token', token);
