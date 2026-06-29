@@ -4,8 +4,8 @@ import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:lensly/services/auth_service.dart';
 
 class MessageService {
-  static const String baseUrl = 'http://192.168.1.131:3000/api';
-  static const String socketUrl = 'http://192.168.1.131:3000';
+  static const String baseUrl = 'http://172.20.10.2:3000/api';
+  static const String socketUrl = 'http://172.20.10.2:3000';
 
   static IO.Socket? _socket;
 

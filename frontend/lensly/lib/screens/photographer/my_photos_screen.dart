@@ -101,7 +101,6 @@ class _MyPhotosScreenState extends State<MyPhotosScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              // preview imagine
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: Image.file(
@@ -112,7 +111,6 @@ class _MyPhotosScreenState extends State<MyPhotosScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              // titlu
               const Text(
                 'TITLU',
                 style: TextStyle(
@@ -148,7 +146,6 @@ class _MyPhotosScreenState extends State<MyPhotosScreen> {
                 ),
               ),
               const SizedBox(height: 14),
-              // categorie
               const Text(
                 'CATEGORIE',
                 style: TextStyle(
@@ -233,7 +230,6 @@ class _MyPhotosScreenState extends State<MyPhotosScreen> {
       File imageFile, String title, String category) async {
     if (_currentUser == null) return;
 
-    // aratam loading
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -251,7 +247,7 @@ class _MyPhotosScreenState extends State<MyPhotosScreen> {
       title: title.isEmpty ? null : title,
     );
 
-    Navigator.pop(context); // inchidem loading
+    Navigator.pop(context); 
 
     if (result != null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -534,12 +530,11 @@ class _MyPhotosScreenState extends State<MyPhotosScreen> {
               'Șterge fotografia',
               () async {
                 Navigator.pop(context);
-                // stergere din backend
                 final token = await AuthService.getToken();
                 if (token != null && photo['id'] != null) {
                   await http.delete(
                     Uri.parse(
-                        'http://192.168.1.131:3000/api/photos/${photo['id']}'),
+                        'http://172.20.10.2:3000/api/photos/${photo['id']}'),
                     headers: {'Authorization': 'Bearer $token'},
                   );
                   await _loadPhotos(_currentUser!['id']);

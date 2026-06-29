@@ -207,7 +207,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                   Navigator.pop(context);
                   final token = await AuthService.getToken();
                   await http.delete(
-                    Uri.parse('http://192.168.1.131:3000/api/messages/delete/${conversation['id']}'),
+                    Uri.parse('http://172.20.10.2:3000/api/messages/delete/${conversation['id']}'),
                     headers: {
                       if (token != null) 'Authorization': 'Bearer $token',
                     },
@@ -227,7 +227,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
         final token = await AuthService.getToken();
         if (token != null) {
           await http.put(
-            Uri.parse('http://192.168.1.131:3000/api/messages/read/${conversation['id']}/${_currentUser!['id']}'),
+            Uri.parse('http://172.20.10.2:3000/api/messages/read/${conversation['id']}/${_currentUser!['id']}'),
             headers: {'Authorization': 'Bearer $token'},
           );
         }

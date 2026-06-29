@@ -57,7 +57,7 @@ Future<void> _loadUnreadCount() async {
   
   final token = await AuthService.getToken();
   final response = await http.get(
-    Uri.parse('http://192.168.1.131:3000/api/messages/conversations/${user['id']}'),
+    Uri.parse('http://172.20.10.2:3000/api/messages/conversations/${user['id']}'),
     headers: {
       if (token != null) 'Authorization': 'Bearer $token',
     },
@@ -963,7 +963,7 @@ class _PhotographerBookmarkButtonState
     final token = await AuthService.getToken();
     final response = await http.get(
       Uri.parse(
-          'http://192.168.1.131:3000/api/saved/photographers/${user['id']}'),
+          'http://172.20.10.2:3000/api/saved/photographers/${user['id']}'),
       headers: {
         if (token != null) 'Authorization': 'Bearer $token',
       },
@@ -987,7 +987,7 @@ class _PhotographerBookmarkButtonState
         if (_isSaved) {
           await http.delete(
             Uri.parse(
-                'http://192.168.1.131:3000/api/saved/photographer/${user['id']}/${widget.photographerId}'),
+                'http://172.20.10.2:3000/api/saved/photographer/${user['id']}/${widget.photographerId}'),
             headers: {
               if (token != null) 'Authorization': 'Bearer $token',
             },
@@ -995,7 +995,7 @@ class _PhotographerBookmarkButtonState
           setState(() => _isSaved = false);
         } else {
           final response = await http.post(
-            Uri.parse('http://192.168.1.131:3000/api/saved/photographer'),
+            Uri.parse('http://172.20.10.2:3000/api/saved/photographer'),
             headers: {
               'Content-Type': 'application/json',
               if (token != null) 'Authorization': 'Bearer $token',

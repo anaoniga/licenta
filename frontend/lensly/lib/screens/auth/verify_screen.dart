@@ -51,7 +51,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.131:3000/api/auth/verify'),
+        Uri.parse('http://172.20.10.2:3000/api/auth/verify'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'pendingId': widget.pendingId,
@@ -63,7 +63,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
 
       if (response.statusCode == 200) {
         await AuthService.saveUserData(data['user']);
-        final prefs = await _saveToken(data['token']);
+        await _saveToken(data['token']);
 
         final isPhotographer = data['user']['role'] == 'photographer';
 
@@ -99,7 +99,7 @@ class _VerifyScreenState extends State<VerifyScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.131:3000/api/auth/resend'),
+        Uri.parse('http://172.20.10.2:3000/api/auth/resend'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'pendingId': widget.pendingId}),
       );
@@ -178,7 +178,6 @@ class _VerifyScreenState extends State<VerifyScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              // input 6 cifre
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: List.generate(6, (index) {

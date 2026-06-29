@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  static const String baseUrl = 'http://192.168.1.131:3000/api';
+  static const String baseUrl = 'http://172.20.10.2:3000/api';
 
   static Future<Map<String, dynamic>> register({
     required String name,
@@ -101,7 +101,7 @@ class AuthService {
   }
 
   static Future<void> saveUserData(Map<String, dynamic> user) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('user', jsonEncode(user));
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user', jsonEncode(user));
 }
 }

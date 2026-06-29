@@ -78,7 +78,7 @@ class _PhotographerDashboardScreenState
     try {
       final token = await AuthService.getToken();
       final response = await http.get(
-        Uri.parse('http://192.168.1.131:3000/api/users/$userId/stats'),
+        Uri.parse('http://172.20.10.2:3000/api/users/$userId/stats'),
         headers: {
           if (token != null) 'Authorization': 'Bearer $token',
         },
@@ -192,7 +192,6 @@ class _PhotographerDashboardScreenState
                           builder: (_) => const EditProfileScreen(),
                         ),
                       );
-                      // reincarcam datele dupa ce ne intoarcem
                       await _loadUser();
                     },
                     child: Container(

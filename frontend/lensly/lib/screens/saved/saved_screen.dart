@@ -39,7 +39,6 @@ class _SavedScreenState extends State<SavedScreen> {
     }
   }
 
-  // grupam pozele pe foldere
   Map<String, List<Map<String, dynamic>>> get _folders {
     final Map<String, List<Map<String, dynamic>>> folders = {};
     for (final photo in _savedPhotos) {
@@ -462,7 +461,7 @@ class _SavedScreenState extends State<SavedScreen> {
   Future<List<Map<String, dynamic>>> _loadSavedPhotographers() async {
     final token = await AuthService.getToken();
     final response = await http.get(
-      Uri.parse('http://192.168.1.131:3000/api/saved/photographers/${_currentUser!['id']}'),
+      Uri.parse('http://172.20.10.2:3000/api/saved/photographers/${_currentUser!['id']}'),
       headers: {
         if (token != null) 'Authorization': 'Bearer $token',
       },
